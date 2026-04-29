@@ -1,0 +1,510 @@
+package com.interivalle.Servicio;
+
+import com.interivalle.DTO.CrearSolicitud;
+import com.interivalle.DTO.ReprogramarVisitaRequest;
+import com.interivalle.DTO.SolicitudResponse;
+import com.interivalle.DTO.SolicitudServicioItem;
+import com.interivalle.Modelo.Solicitud;
+import com.interivalle.Modelo.SolicitudServicios;
+import com.interivalle.Modelo.Servicios;
+import com.interivalle.Modelo.Usuario;
+import com.interivalle.Modelo.VisitaTecnica;
+import com.interivalle.Modelo.enums.ModuloNotificacion;
+import com.interivalle.Modelo.enums.TipoNotificacion;
+import com.interivalle.Repositorio.SolicitudRepositorio;
+import com.interivalle.Repositorio.SolicitudServiciosRepositorio;
+import com.interivalle.Repositorio.ServiciosRepositorio;
+import com.interivalle.Repositorio.UsuarioRepositorio;
+import com.interivalle.Repositorio.VisitaTecnicaRepositorio;
+
+import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ *
+ * @author mary_
+ */
+
+
+@Service
+public class SolicitudService {
+
+    @Autowired private UsuarioRepositorio usuarioRepo;
+    @Autowired private SolicitudRepositorio solicitudRepo;
+    @Autowired private ServiciosRepositorio serviciosRepo;
+    @Autowired private SolicitudServiciosRepositorio solicitudServicioRepo;
+    @Autowired private VisitaTecnicaRepositorio visitaTecnicaRepo;
+    @Autowired private NotificacionService notificacionService;
+
+    @Transactional
+    public SolicitudResponse crearSolicitud(CrearSolicitud dto) {
+
+        if (dto.getCorreoUsuario() == null || dto.getCorreoUsuario().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "correoUsuario es requerido");
+        }
+        if (dto.getNombreProyecto() == null || dto.getNombreProyecto().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nombreProyecto es requerido");
+        }
+        if (dto.getTipoSolicitud() == null || dto.getTipoSolicitud().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tipoSolicitud es requerido");
+        }
+
+        String tipoSolicitud = dto.getTipoSolicitud().trim().toUpperCase();
+
+        if ("COTIZACION_BASE".equals(tipoSolicitud)) {
+            if (dto.getServicios() == null || dto.getServicios().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe seleccionar al menos un servicio");
+            }
+        }
+
+        if ("VISITA_TECNICA".equals(tipoSolicitud)) {
+            if (dto.getFechaVisita() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaVisita es requerida");
+            }
+
+            if (!dto.getFechaVisita().isAfter(LocalDate.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de visita debe ser futura");
+            }
+
+            if (dto.getHoraVisita() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "horaVisita es requerida");
+            }
+
+            LocalTime hora = dto.getHoraVisita();
+
+            boolean horaValida =
+                    (!hora.isBefore(LocalTime.of(8, 0)) && !hora.isAfter(LocalTime.of(12, 0))) ||
+                    (!hora.isBefore(LocalTime.of(14, 0)) && !hora.isAfter(LocalTime.of(17, 0)));
+
+            if (!horaValida) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "La hora de visita debe estar entre 08:00-12:00 o 14:00-17:00"
+                );
+            }
+
+            if (dto.getDireccionVisita() == null || dto.getDireccionVisita().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "direccionVisita es requerida");
+            }
+
+            if (dto.getCelularCliente() == null || dto.getCelularCliente().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "celularCliente es requerido");
+            }
+            
+            boolean visitaExistente = visitaTecnicaRepo
+            .existsBySolicitud_Usuario_CorreoUsuarioAndSolicitud_NombreProyectoUsuarioAndFechaVisitaAndHoraVisita(
+                    dto.getCorreoUsuario(),
+                    dto.getNombreProyecto().trim(),
+                    dto.getFechaVisita(),
+                    dto.getHoraVisita()
+            );
+
+            if (visitaExistente) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Ya existe una visita técnica para este proyecto en la misma fecha y hora"
+                );
+            }
+            
+            boolean yaExisteVisitaMismaHora = visitaTecnicaRepo
+            .existsBySolicitud_Usuario_CorreoUsuarioAndFechaVisitaAndHoraVisita(
+                dto.getCorreoUsuario(),
+                dto.getFechaVisita(),
+                dto.getHoraVisita()
+            );
+
+            if (yaExisteVisitaMismaHora) {
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Ya tienes una visita técnica agendada para esa fecha y hora"
+                );
+            }
+            
+            Optional<VisitaTecnica> visitaExistenteProyecto = visitaTecnicaRepo
+                .findBySolicitud_Usuario_CorreoUsuarioAndSolicitud_NombreProyectoUsuario(
+                    dto.getCorreoUsuario(),
+                    dto.getNombreProyecto().trim()
+                );
+
+            if (visitaExistenteProyecto.isPresent()) {
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Ya existe una visita técnica para este proyecto. Debe reprogramarla y no crear una nueva."
+                );
+            }
+        }
+
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(dto.getCorreoUsuario())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Solicitud solicitud = new Solicitud();
+        solicitud.setUsuario(usuario);
+        solicitud.setNombreProyectoUsuario(dto.getNombreProyecto().trim());
+        solicitud.setTipoSolicitud(tipoSolicitud);
+        solicitud.setEstado("PENDIENTE");
+        solicitud.setFechaSolicitud(LocalDate.now());
+
+        solicitud = solicitudRepo.save(solicitud);
+
+        if ("COTIZACION_BASE".equals(tipoSolicitud)) {
+            for (Integer idServicio : dto.getServicios()) {
+
+                long existe = solicitudServicioRepo.existeServicioEnProyecto(
+                    dto.getCorreoUsuario(),
+                    solicitud.getNombreProyectoUsuario(),
+                    solicitud.getTipoSolicitud(),
+                    idServicio
+                );
+
+                if (existe > 0) {
+                    throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Ya existe una solicitud para este proyecto con el servicio ID: " + idServicio
+                    );
+                }
+
+                Servicios servicio = serviciosRepo.findById(idServicio)
+                    .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Servicio no encontrado: " + idServicio
+                    ));
+
+                SolicitudServicios ss = new SolicitudServicios();
+                ss.setSolicitud(solicitud);
+                ss.setServicios(servicio);
+                ss.setEstado("PENDIENTE");
+
+                solicitudServicioRepo.save(ss);
+            }
+        }
+
+        if ("VISITA_TECNICA".equals(tipoSolicitud)) {
+            VisitaTecnica visita = new VisitaTecnica();
+            visita.setSolicitud(solicitud);
+            visita.setFechaVisita(dto.getFechaVisita());
+            visita.setHoraVisita(dto.getHoraVisita());
+            visita.setDireccionVisita(dto.getDireccionVisita().trim());
+            visita.setCelularCliente(dto.getCelularCliente().trim());
+            visita.setEstadoVisita("PENDIENTE");
+
+            visitaTecnicaRepo.save(visita);
+            // CREAR NOTIFICACIÓN PARA SUPERVISORES
+    List<Usuario> supervisores = usuarioRepo.findByIdRol(2);
+
+    String nombreCliente = usuario.getNombreUsuario();
+    String nombreProyecto = solicitud.getNombreProyectoUsuario();
+
+    String titulo = "Nueva visita técnica solicitada";
+    String mensaje = "El cliente " + nombreCliente
+            + " solicitó una visita técnica para el proyecto '" + nombreProyecto + "'.";
+
+        notificacionService.crearNotificacionParaVarios(
+            supervisores,
+            TipoNotificacion.VISITA_TECNICA_CREADA,
+            ModuloNotificacion.VISITA_TECNICA,
+            titulo,
+            mensaje,
+            solicitud.getIdSolicitud()
+    );
+        }
+
+        return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+    }
+
+    public SolicitudResponse obtenerSolicitud(Integer idSolicitud) {
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+    }
+
+    @Transactional
+    public SolicitudResponse generarCotizacion(Integer idSolicitud) {
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (!"PENDIENTE".equalsIgnoreCase(solicitud.getEstado())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo se puede generar cotización para solicitudes en estado PENDIENTE"
+            );
+        }
+        if (!"COTIZACION_BASE".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo las solicitudes de tipo COTIZACION_BASE pueden generar cotización"
+            );
+        }
+
+        solicitud.setEstado("GENERADA");
+        solicitud = solicitudRepo.save(solicitud);
+
+        return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+    }
+    
+        private void cargarDatosVisitaTecnica(Solicitud solicitud, SolicitudResponse resp) {
+        if ("VISITA_TECNICA".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            visitaTecnicaRepo.findBySolicitud_IdSolicitud(solicitud.getIdSolicitud())
+                .ifPresent(visita -> {
+                    resp.setFechaVisita(visita.getFechaVisita());
+                    resp.setHoraVisita(visita.getHoraVisita());
+                    resp.setDireccionVisita(visita.getDireccionVisita());
+                    resp.setCelularCliente(visita.getCelularCliente());
+
+                });
+        }
+    }
+
+    private SolicitudResponse toResponse(Solicitud solicitud) {
+
+        SolicitudResponse dto = new SolicitudResponse();
+
+        dto.setIdSolicitud(solicitud.getIdSolicitud());
+        dto.setTipoSolicitud(solicitud.getTipoSolicitud());
+        dto.setEstado(solicitud.getEstado());
+        dto.setNombreProyecto(solicitud.getNombreProyectoUsuario());
+        dto.setFechaSolicitud(solicitud.getFechaSolicitud());
+
+        if (solicitud.getUsuario() != null) {
+            dto.setCorreoUsuario(solicitud.getUsuario().getCorreoUsuario());
+        }
+
+        if (solicitud.getServiciosSeleccionados() != null && !solicitud.getServiciosSeleccionados().isEmpty()) {
+            List<SolicitudServicioItem> servicios = solicitud.getServiciosSeleccionados()
+                .stream()
+                .map(item -> {
+                    SolicitudServicioItem dtoItem = new SolicitudServicioItem();
+                    dtoItem.setIdServicio(item.getServicios().getIdServicio());
+                    dtoItem.setNombreServicio(item.getServicios().getNombreServicio());
+                    dtoItem.setEstado(item.getEstado());
+                    return dtoItem;
+                })
+                .collect(Collectors.toList());
+
+            dto.setSolicitudServicios(servicios);
+        }
+
+        cargarDatosVisitaTecnica(solicitud, dto);
+
+        return dto;
+    }
+
+    public List<SolicitudResponse> listarTodas() {
+        return solicitudRepo.findAll()
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    public List<SolicitudResponse> listarPorCorreoUsuario(String correoUsuario) {
+        return solicitudRepo.findByUsuarioCorreoUsuario(correoUsuario)
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    private SolicitudResponse buildResponseFromSolicitud(Integer idSolicitud) {
+
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        List<SolicitudServicios> detalles = solicitudServicioRepo.findBySolicitud_IdSolicitud(idSolicitud);
+
+        List<SolicitudServicioItem> items = detalles.stream().map(ss -> {
+            SolicitudServicioItem it = new SolicitudServicioItem();
+            it.setIdSolicitudServicio(ss.getIdSolicitudServicio());
+            it.setIdServicio(ss.getServicios().getIdServicio());
+            it.setNombreServicio(ss.getServicios().getNombreServicio());
+            it.setEstado(ss.getEstado());
+            return it;
+        }).collect(Collectors.toList());
+
+        SolicitudResponse resp = new SolicitudResponse();
+        resp.setIdSolicitud(solicitud.getIdSolicitud());
+        resp.setTipoSolicitud(solicitud.getTipoSolicitud());
+        resp.setEstado(solicitud.getEstado());
+        resp.setNombreProyecto(solicitud.getNombreProyectoUsuario());
+        resp.setFechaSolicitud(solicitud.getFechaSolicitud());
+
+        if (solicitud.getUsuario() != null) {
+            resp.setCorreoUsuario(solicitud.getUsuario().getCorreoUsuario());
+        }
+
+        resp.setSolicitudServicios(items);
+
+        cargarDatosVisitaTecnica(solicitud, resp);
+
+        return resp;
+    }
+    
+    @Transactional
+    public SolicitudResponse reprogramarVisita(Integer idSolicitud, ReprogramarVisitaRequest req, Integer idUsuario) {
+
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (!"VISITA_TECNICA".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo se pueden reprogramar solicitudes de visita técnica"
+            );
+        }
+
+        if (!"PENDIENTE".equalsIgnoreCase(solicitud.getEstado()) &&
+            !"REPROGRAMADA".equalsIgnoreCase(solicitud.getEstado())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo se pueden reprogramar visitas en estado PENDIENTE o REPROGRAMADA"
+            );
+        }
+
+        if (req == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Los datos de reprogramación son obligatorios");
+        }
+
+        if (req.getFechaVisita() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fechaVisita es requerida");
+        }
+
+        if (!req.getFechaVisita().isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha debe ser futura");
+        }
+
+        if (req.getHoraVisita() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "horaVisita es requerida");
+        }
+
+        LocalTime hora = req.getHoraVisita();
+
+        boolean horaValida =
+            (!hora.isBefore(LocalTime.of(8, 0)) && !hora.isAfter(LocalTime.of(12, 0))) ||
+            (!hora.isBefore(LocalTime.of(14, 0)) && !hora.isAfter(LocalTime.of(17, 0)));
+
+        if (!horaValida) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "La hora de visita debe estar entre 08:00-12:00 o 14:00-17:00"
+            );
+        }
+
+        Usuario usuarioAccion = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        VisitaTecnica visita = visitaTecnicaRepo.findBySolicitud_IdSolicitud(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visita técnica no encontrada"));
+
+        boolean yaExisteVisitaMismaHora = visitaTecnicaRepo
+            .existsBySolicitud_Usuario_CorreoUsuarioAndFechaVisitaAndHoraVisita(
+                solicitud.getUsuario().getCorreoUsuario(),
+                req.getFechaVisita(),
+                req.getHoraVisita()
+            );
+
+        boolean mismaFechaHora =
+            visita.getFechaVisita().equals(req.getFechaVisita()) &&
+            visita.getHoraVisita().equals(req.getHoraVisita());
+
+        if (yaExisteVisitaMismaHora && !mismaFechaHora) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Ya tienes una visita técnica agendada para esa fecha y hora"
+            );
+        }
+
+        visita.setFechaVisita(req.getFechaVisita());
+        visita.setHoraVisita(req.getHoraVisita());
+
+        solicitud.setEstado("REPROGRAMADA");
+        visita.setEstadoVisita("REPROGRAMADA");
+
+        visitaTecnicaRepo.save(visita);
+        solicitudRepo.save(solicitud);
+
+        String nombreProyecto = solicitud.getNombreProyectoUsuario();
+        String fechaTexto = req.getFechaVisita().toString();
+        String horaTexto = req.getHoraVisita().toString();
+
+        // ROLES:
+        // 1 = ADMIN
+        // 2 = SUPERVISOR
+        // 3 = CLIENTE
+        Integer rolAccion = usuarioAccion.getIdRol();
+
+        if (rolAccion != null && rolAccion == 3) {
+            // SI REPROGRAMA EL CLIENTE -> NOTIFICAR A SUPERVISORES
+            List<Usuario> supervisores = usuarioRepo.findByIdRol(2);
+
+            String titulo = "Visita técnica reprogramada por el cliente";
+            String mensaje = "El cliente " + usuarioAccion.getNombreUsuario()
+                    + " reprogramó la visita técnica del proyecto '" + nombreProyecto
+                    + "' para la fecha " + fechaTexto
+                    + " a las " + horaTexto + ".";
+
+            notificacionService.crearNotificacionParaVarios(
+                    supervisores,
+                    TipoNotificacion.VISITA_TECNICA_REPROGRAMADA,
+                    ModuloNotificacion.VISITA_TECNICA,
+                    titulo,
+                    mensaje,
+                    solicitud.getIdSolicitud()
+            );
+
+        } else if (rolAccion != null && (rolAccion == 1 || rolAccion == 2)) {
+            // SI REPROGRAMA ADMIN O SUPERVISOR -> NOTIFICAR AL CLIENTE
+            if (solicitud.getUsuario() != null) {
+                Usuario cliente = solicitud.getUsuario();
+
+                String titulo = "Visita técnica reprogramada";
+                String mensaje = "La visita técnica del proyecto '" + nombreProyecto
+                        + "' fue reprogramada para la fecha " + fechaTexto
+                        + " a las " + horaTexto + ".";
+
+                notificacionService.crearNotificacion(
+                        cliente,
+                        TipoNotificacion.VISITA_TECNICA_REPROGRAMADA,
+                        ModuloNotificacion.VISITA_TECNICA,
+                        titulo,
+                        mensaje,
+                        solicitud.getIdSolicitud()
+                );
+            }
+        }
+
+        return buildResponseFromSolicitud(idSolicitud);
+    }
+    
+    @Transactional
+    public SolicitudResponse marcarVisitaRealizada(Integer idSolicitud) {
+
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (!"VISITA_TECNICA".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo las visitas técnicas pueden marcarse como realizadas"
+            );
+        }
+
+        VisitaTecnica visita = visitaTecnicaRepo.findBySolicitud_IdSolicitud(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visita técnica no encontrada"));
+
+        solicitud.setEstado("REALIZADA");
+        visita.setEstadoVisita("REALIZADA");
+
+        solicitudRepo.save(solicitud);
+        visitaTecnicaRepo.save(visita);
+
+        return buildResponseFromSolicitud(idSolicitud);
+    }
+    
+}

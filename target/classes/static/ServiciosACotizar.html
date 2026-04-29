@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicios a Cotizar</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --line: #d8dee8;
+            --text: #1f2933;
+            --muted: #52616f;
+            --accent: #1f7a5c;
+            --accent-dark: #155c45;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+        }
+
+        header,
+        main {
+            width: min(900px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            padding: 24px 0 12px;
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 28px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+
+        section {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 6px;
+            padding: 18px;
+            margin: 16px 0;
+        }
+
+        section[hidden] {
+            display: none;
+        }
+
+        .opciones,
+        .servicios,
+        .grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .opciones,
+        .servicios {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        label {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .opciones label,
+        .servicios label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text);
+        }
+
+        input {
+            min-height: 38px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 8px 10px;
+            color: var(--text);
+            font: inherit;
+        }
+
+        input[type="radio"],
+        input[type="checkbox"] {
+            width: 18px;
+            min-height: 18px;
+        }
+
+        button {
+            min-height: 40px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            padding: 9px 14px;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .primario {
+            background: var(--accent);
+            color: #fff;
+            margin-top: 16px;
+        }
+
+        .primario:hover {
+            background: var(--accent-dark);
+        }
+
+        .secundario {
+            border-color: var(--line);
+            background: #fff;
+            color: var(--text);
+        }
+
+        @media (max-width: 720px) {
+            header,
+            main {
+                width: min(100% - 20px, 900px);
+            }
+
+            header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .opciones,
+            .servicios,
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Servicios a cotizar</h1>
+        <button class="secundario" type="button" onclick="cerrarSesion()">Cerrar sesion</button>
+    </header>
+
+    <main>
+        <section>
+            <h2>Tipo de solicitud</h2>
+            <div class="opciones">
+                <label><input type="radio" name="tipo" id="opcionCotizacion" value="COTIZACION_BASE"> Cotizacion base</label>
+                <label><input type="radio" name="tipo" id="opcionVisita" value="VISITA_TECNICA"> Visita tecnica</label>
+            </div>
+        </section>
+
+        <section id="bloqueCotizacion" hidden>
+            <h2>Servicios</h2>
+            <div class="servicios">
+                <label><input type="checkbox" class="servicioCheck" value="1"> Obra blanca</label>
+                <label><input type="checkbox" class="servicioCheck" value="2"> Carpinteria</label>
+                <label><input type="checkbox" class="servicioCheck" value="3"> Divisiones en vidrio</label>
+                <label><input type="checkbox" class="servicioCheck" value="4"> Mesones en marmol</label>
+            </div>
+            <div class="grid" style="margin-top: 16px;">
+                <label>Nombre del proyecto
+                    <input type="text" id="nombre_proyecto_usuario" required>
+                </label>
+            </div>
+            <button class="primario" id="btnCotizar" type="button">Continuar</button>
+        </section>
+
+        <section id="bloqueVisita" hidden>
+            <h2>Visita tecnica</h2>
+            <div class="grid">
+                <label>Nombre del proyecto
+                    <input type="text" id="nombre_proyecto_visita">
+                </label>
+                <label>Fecha
+                    <input type="date" id="fechaVisita">
+                </label>
+                <label>Hora
+                    <input type="time" id="horaVisita">
+                </label>
+                <label>Direccion
+                    <input type="text" id="direccionVisita">
+                </label>
+                <label>Celular
+                    <input type="tel" id="celularCliente">
+                </label>
+            </div>
+            <button class="primario" id="btnAgendarVisita" type="button">Agendar visita</button>
+        </section>
+    </main>
+
+    <script src="js/ServiciosACotizar.js"></script>
+</body>
+</html>
