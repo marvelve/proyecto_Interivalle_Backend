@@ -39,6 +39,7 @@ public class MesonGranitoService {
 
         MesonGranito item = new MesonGranito();
         item.setCotizacionPersonalizada(cotizacion);
+        item.setCotizacion(cotizacion);
         validarCotizacionEditable(item.getCotizacionPersonalizada());
 
         item.setTipoGranito(req.getTipoGranito());
@@ -70,6 +71,7 @@ public class MesonGranitoService {
             CotizacionPersonalizada cotizacion = cotizacionRepo.findById(req.getIdCotizacion())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada"));
             item.setCotizacionPersonalizada(cotizacion);
+            item.setCotizacion(cotizacion);
         validarCotizacionEditable(item.getCotizacionPersonalizada());
 
         }
