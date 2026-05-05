@@ -483,6 +483,59 @@ public class SolicitudService {
     }
     
     @Transactional
+    public SolicitudResponse confirmarVisitaTecnica(Integer idSolicitud) {
+
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (!"VISITA_TECNICA".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo las visitas tecnicas pueden confirmarse"
+            );
+        }
+
+        if (!"PENDIENTE".equalsIgnoreCase(solicitud.getEstado()) &&
+            !"REPROGRAMADA".equalsIgnoreCase(solicitud.getEstado())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo se pueden confirmar visitas en estado PENDIENTE o REPROGRAMADA"
+            );
+        }
+
+        VisitaTecnica visita = visitaTecnicaRepo.findBySolicitud_IdSolicitud(idSolicitud)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visita tecnica no encontrada"));
+
+        solicitud.setEstado("CONFIRMADA");
+        visita.setEstadoVisita("CONFIRMADA");
+
+        solicitudRepo.save(solicitud);
+        visitaTecnicaRepo.save(visita);
+
+        if (solicitud.getUsuario() != null) {
+            String nombreProyecto = solicitud.getNombreProyectoUsuario();
+            String fechaTexto = visita.getFechaVisita() != null ? visita.getFechaVisita().toString() : "-";
+            String horaTexto = visita.getHoraVisita() != null ? visita.getHoraVisita().toString() : "-";
+
+            String titulo = "Visita tecnica confirmada";
+            String mensaje = "La visita tecnica del proyecto '" + nombreProyecto
+                    + "' esta confirmada para la fecha " + fechaTexto
+                    + " a las " + horaTexto + ".";
+
+            notificacionService.crearNotificacion(
+                    solicitud.getUsuario(),
+                    TipoNotificacion.VISITA_TECNICA_CONFIRMADA,
+                    ModuloNotificacion.VISITA_TECNICA,
+                    titulo,
+                    mensaje,
+                    solicitud.getIdSolicitud()
+            );
+        }
+
+        return buildResponseFromSolicitud(idSolicitud);
+    }
+    
+    @Transactional
     public SolicitudResponse marcarVisitaRealizada(Integer idSolicitud) {
 
         Solicitud solicitud = solicitudRepo.findById(idSolicitud)
@@ -497,6 +550,15 @@ public class SolicitudService {
 
         VisitaTecnica visita = visitaTecnicaRepo.findBySolicitud_IdSolicitud(idSolicitud)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visita técnica no encontrada"));
+
+        if (!"PENDIENTE".equalsIgnoreCase(solicitud.getEstado()) &&
+            !"REPROGRAMADA".equalsIgnoreCase(solicitud.getEstado()) &&
+            !"CONFIRMADA".equalsIgnoreCase(solicitud.getEstado())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "La visita tecnica solo puede marcarse como realizada desde PENDIENTE, REPROGRAMADA o CONFIRMADA"
+            );
+        }
 
         solicitud.setEstado("REALIZADA");
         visita.setEstadoVisita("REALIZADA");

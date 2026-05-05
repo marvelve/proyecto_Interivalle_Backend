@@ -592,3 +592,64 @@ Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.
 2026-04-28T23:35:19.373-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
 Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
 Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:35:49.400-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:35:49.400-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:35:49.400-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:36:19.395-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:36:19.414-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:36:19.414-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:37:15.400-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:37:15.415-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:37:15.431-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:38:15.388-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:38:15.388-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:38:15.388-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:39:15.401-05:00 DEBUG 29268 --- [Backend_Login] [io-8081-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:39:15.401-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:39:15.401-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:40:15.407-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:40:15.407-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:40:15.416-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:41:15.393-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:41:15.396-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:41:15.396-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+2026-04-28T23:42:15.395-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/notificaciones/contador
+2026-04-28T23:42:15.395-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+2026-04-28T23:42:15.395-05:00 DEBUG 29268 --- [Backend_Login] [nio-8081-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/notificaciones/contador
+Hibernate: select u1_0.id_usuario,u1_0.celular_usuario,u1_0.ciudad_usuario,u1_0.contrasena_usuario,u1_0.correo_usuario,u1_0.estado_usuario,u1_0.fecha_registro_usuario,u1_0.id_rol,u1_0.nombre_usuario from usuario u1_0 where u1_0.correo_usuario=?
+Hibernate: select count(n1_0.id_notificacion) from notificacion n1_0 where n1_0.id_usuario_destino=? and not(n1_0.leida)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  16:48 min
+[INFO] Finished at: 2026-04-28T23:43:08-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.3.4:run (default-cli) on project BackendLogin: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

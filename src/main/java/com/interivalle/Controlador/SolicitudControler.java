@@ -83,6 +83,12 @@ public class SolicitudControler {
     public ResponseEntity<SolicitudResponse> marcarVisitaRealizada(@PathVariable Integer idSolicitud) {
         return ResponseEntity.ok(service.marcarVisitaRealizada(idSolicitud));
     }
+
+    @PreAuthorize("hasAuthority('SUPERVISOR')")
+    @PutMapping("/{idSolicitud}/confirmar-visita")
+    public ResponseEntity<SolicitudResponse> confirmarVisitaTecnica(@PathVariable Integer idSolicitud) {
+        return ResponseEntity.ok(service.confirmarVisitaTecnica(idSolicitud));
+    }
 }
 
 

@@ -11,11 +11,15 @@ import com.interivalle.DTO.ComentarioAvanceResponse;
 import com.interivalle.Modelo.AvanceSemanal;
 import com.interivalle.Modelo.ComentarioAvance;
 import com.interivalle.Modelo.Cronograma;
+import com.interivalle.Modelo.CronogramaDetalle;
 import com.interivalle.Modelo.Usuario;
+import com.interivalle.Modelo.enums.EstadoActividadCronograma;
+import com.interivalle.Modelo.enums.EstadoCronograma;
 import com.interivalle.Modelo.enums.ModuloNotificacion;
 import com.interivalle.Modelo.enums.TipoNotificacion;
 import com.interivalle.Repositorio.AvanceSemanalRepositorio;
 import com.interivalle.Repositorio.ComentarioAvanceRepositorio;
+import com.interivalle.Repositorio.CronogramaDetalleRepositorio;
 import com.interivalle.Repositorio.CronogramaRepositorio;
 import com.interivalle.Repositorio.UsuarioRepositorio;
 import java.time.LocalDateTime;
@@ -41,6 +45,9 @@ public class AvanceSemanalService {
 
     @Autowired
     private CronogramaRepositorio cronogramaRepo;
+
+    @Autowired
+    private CronogramaDetalleRepositorio cronogramaDetalleRepo;
 
     @Autowired
     private UsuarioRepositorio usuarioRepo;
@@ -113,9 +120,16 @@ public class AvanceSemanalService {
 
     avance.setPorcentajeGeneral(porcentajeGeneral);
 
+    sincronizarDetalleCronograma(
+            cronograma.getIdCronograma(),
+            req.getNumeroSemana(),
+            req.getPorcentajeSemana()
+    );
+
     // Actualizar cronograma
     cronograma.setAvanceGeneral(porcentajeGeneral);
     cronograma.setEstado(determinarEstadoCronograma(porcentajeGeneral));
+    cronograma.setEstadoCronograma(determinarEstadoCronogramaEnum(porcentajeGeneral));
     cronogramaRepo.save(cronograma);
 
     AvanceSemanal guardado = avanceRepo.save(avance);
@@ -150,6 +164,13 @@ public class AvanceSemanalService {
             .stream()
             .map(this::mapToResponse)
             .toList();
+    }
+
+   public AvanceSemanalResponse obtenerPorId(Integer idAvance) {
+    AvanceSemanal avance = avanceRepo.findById(idAvance)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avance no encontrado"));
+
+    return mapToResponse(avance);
     }
 
    public ComentarioAvanceResponse comentarAvance(ComentarioAvanceRequest req, Integer idUsuario) {
@@ -250,6 +271,43 @@ private String determinarEstadoSemana(java.math.BigDecimal porcentajeSemana) {
     return "COMPLETADA";
 }
 
+private void sincronizarDetalleCronograma(
+        Integer idCronograma,
+        Integer numeroSemana,
+        java.math.BigDecimal porcentajeSemana
+) {
+    List<CronogramaDetalle> detallesSemana = cronogramaDetalleRepo
+            .findByCronograma_IdCronogramaAndSemana(idCronograma, numeroSemana);
+
+    if (detallesSemana == null || detallesSemana.isEmpty()) {
+        return;
+    }
+
+    EstadoActividadCronograma estado = determinarEstadoActividad(porcentajeSemana);
+    java.math.BigDecimal porcentaje = porcentajeSemana != null
+            ? porcentajeSemana
+            : java.math.BigDecimal.ZERO;
+
+    for (CronogramaDetalle detalle : detallesSemana) {
+        detalle.setPorcentaje(porcentaje);
+        detalle.setEstadoActividad(estado);
+    }
+
+    cronogramaDetalleRepo.saveAll(detallesSemana);
+}
+
+private EstadoActividadCronograma determinarEstadoActividad(java.math.BigDecimal porcentajeSemana) {
+    if (porcentajeSemana == null || porcentajeSemana.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+        return EstadoActividadCronograma.PENDIENTE;
+    }
+
+    if (porcentajeSemana.compareTo(new java.math.BigDecimal("100")) >= 0) {
+        return EstadoActividadCronograma.TERMINADA;
+    }
+
+    return EstadoActividadCronograma.EN_PROCESO;
+}
+
     private String determinarEstadoCronograma(java.math.BigDecimal porcentajeGeneral) {
         if (porcentajeGeneral == null || porcentajeGeneral.compareTo(java.math.BigDecimal.ZERO) == 0) {
             return "PENDIENTE";
@@ -258,5 +316,14 @@ private String determinarEstadoSemana(java.math.BigDecimal porcentajeSemana) {
             return "EN_PROCESO";
         }
         return "FINALIZADO";
+    }
+
+    private EstadoCronograma determinarEstadoCronogramaEnum(java.math.BigDecimal porcentajeGeneral) {
+        if (porcentajeGeneral != null &&
+                porcentajeGeneral.compareTo(new java.math.BigDecimal("100")) >= 0) {
+            return EstadoCronograma.FINALIZADO;
+        }
+
+        return EstadoCronograma.EN_PROCESO;
     }
 }

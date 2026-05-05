@@ -8,6 +8,8 @@ public class CotizacionVistaCompletaResponse {
     private Integer idCotizacion;
     private String nombreProyecto;
     private String estado;
+    private Double medidaAreaPrivada;
+    private List<String> serviciosSeleccionados;
 
     private BigDecimal totalManoObra;
     private BigDecimal totalMateriales;
@@ -43,6 +45,22 @@ public class CotizacionVistaCompletaResponse {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public Double getMedidaAreaPrivada() {
+        return medidaAreaPrivada;
+    }
+
+    public void setMedidaAreaPrivada(Double medidaAreaPrivada) {
+        this.medidaAreaPrivada = medidaAreaPrivada;
+    }
+
+    public List<String> getServiciosSeleccionados() {
+        return serviciosSeleccionados;
+    }
+
+    public void setServiciosSeleccionados(List<String> serviciosSeleccionados) {
+        this.serviciosSeleccionados = serviciosSeleccionados;
     }
 
     public BigDecimal getTotalManoObra() {

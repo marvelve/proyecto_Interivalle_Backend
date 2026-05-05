@@ -4,6 +4,7 @@
  */
 package com.interivalle.Controlador;
 import com.interivalle.DTO.AprobarCotizacionRequest;
+import com.interivalle.DTO.CotizacionBaseFormularioResponse;
 import com.interivalle.DTO.CotizacionBaseResponse;
 import com.interivalle.DTO.CotizacionResponse;
 import com.interivalle.DTO.CotizacionVistaCompletaResponse;
@@ -102,6 +103,35 @@ public class ClienteCotizacionControler {
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Usuario no encontrado"));
         return cotizacionService.obtenerVistaCompleta(usuario.getIdUsuario(), idCotizacion);
+        }
+
+        @GetMapping("/{idCotizacion}/base-formulario")
+        public CotizacionBaseFormularioResponse obtenerFormularioBase(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication) {
+
+            String correo = authentication.getName();
+
+            Usuario usuario = usuarioRepo.findByCorreoUsuario(correo)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+            return cotizacionService.obtenerFormularioBase(usuario.getIdUsuario(), idCotizacion);
+        }
+
+        @PutMapping("/{idCotizacion}/base")
+        public CotizacionBaseResponse actualizarBase(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication,
+            @RequestBody GenerarCotizacionBaseRequest req) {
+
+            String correo = authentication.getName();
+
+            Usuario usuario = usuarioRepo.findByCorreoUsuario(correo)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+            return cotizacionService.actualizarCotizacionBase(usuario.getIdUsuario(), idCotizacion, req);
         }
         
         @PutMapping("/{idCotizacion}/aprobar")

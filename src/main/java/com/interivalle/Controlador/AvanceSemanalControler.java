@@ -48,6 +48,11 @@ public class AvanceSemanalControler {
         return avanceService.listarPorCronograma(idCronograma);
     }
 
+    @GetMapping("/{idAvance}")
+    public AvanceSemanalResponse obtenerPorId(@PathVariable Integer idAvance) {
+        return avanceService.obtenerPorId(idAvance);
+    }
+
     @PostMapping("/comentarios")
     public ComentarioAvanceResponse comentar(@RequestBody ComentarioAvanceRequest req, Authentication auth) {
         Integer idUsuario = obtenerIdUsuario(auth);

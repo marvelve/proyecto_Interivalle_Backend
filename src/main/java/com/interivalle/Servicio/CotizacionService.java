@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interivalle.DTO.ActividadAgrupadaResponse;
 import com.interivalle.DTO.AprobarCotizacionRequest;
 import com.interivalle.DTO.CarpinteriaBaseRequest;
+import com.interivalle.DTO.CotizacionBaseFormularioResponse;
 import com.interivalle.DTO.CotizacionVistaCompletaResponse;
 import com.interivalle.DTO.CotizacionPersonalizadaDetalleResponse;
 import com.interivalle.DTO.CotizacionActividadResponse;
@@ -20,6 +21,7 @@ import com.interivalle.DTO.ManoObraBaseRequest;
 import com.interivalle.DTO.MaterialAgrupadoResponse;
 import com.interivalle.DTO.MezonBaseRequest;
 import com.interivalle.DTO.ObservacionRequest;
+import com.interivalle.DTO.SolicitudServicioItem;
 import com.interivalle.DTO.VidrioBaseRequest;
 import com.interivalle.Modelo.ActividadMaterial;
 import com.interivalle.Modelo.CatalogoItem;
@@ -82,6 +84,12 @@ public class CotizacionService {
     private static final int SERVICIO_VIDRIO = 3;
     private static final int SERVICIO_MEZON = 4;
     private static final BigDecimal PRECIO_MT_MARMOL = new BigDecimal("850000");
+
+    private static class TotalesCotizacionBase {
+        private BigDecimal manoObra = BigDecimal.ZERO;
+        private BigDecimal materiales = BigDecimal.ZERO;
+        private BigDecimal productos = BigDecimal.ZERO;
+    }
 
     @Autowired private CotizacionRepositorio cotizacionRepo;
     @Autowired private CotizacionDetalleRepositorio detalleRepo;
@@ -614,6 +622,451 @@ public class CotizacionService {
         resp.setVidrioProcesado(req.getVidrio() != null);
         resp.setMezonProcesado(req.getMezon() != null);
 
+        return resp;
+    }
+
+    @Transactional
+    public CotizacionBaseFormularioResponse obtenerFormularioBase(Integer idUsuario, Integer idCotizacion) {
+        Cotizacion cot = getCotizacionDelUsuario(idUsuario, idCotizacion);
+        return construirFormularioBaseResponse(cot);
+    }
+
+    @Transactional
+    public CotizacionBaseFormularioResponse obtenerFormularioBaseAdminSupervisor(Integer idCotizacion) {
+        Cotizacion cot = cotizacionRepo.findById(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Cotizacion no encontrada"
+            ));
+
+        return construirFormularioBaseResponse(cot);
+    }
+
+    @Transactional
+    public CotizacionBaseResponse actualizarCotizacionBase(Integer idUsuario, Integer idCotizacion, GenerarCotizacionBaseRequest req) {
+        Usuario usuario = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Cotizacion cot = getCotizacionDelUsuario(idUsuario, idCotizacion);
+        return actualizarCotizacionBaseInterna(cot, req, usuario);
+    }
+
+    @Transactional
+    public CotizacionBaseResponse actualizarCotizacionBaseAdminSupervisor(Integer idCotizacion, GenerarCotizacionBaseRequest req) {
+        Cotizacion cot = cotizacionRepo.findById(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Cotizacion no encontrada"
+            ));
+
+        return actualizarCotizacionBaseInterna(cot, req, cot.getCreadaPor());
+    }
+
+    private CotizacionBaseResponse actualizarCotizacionBaseInterna(Cotizacion cot, GenerarCotizacionBaseRequest req, Usuario usuario) {
+        if (req == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar los datos de la cotizacion base");
+        }
+
+        validarCotizacionEditable(cot);
+
+        Solicitud solicitud = cot.getSolicitud();
+        req.setSolicitudId(solicitud.getIdSolicitud());
+        validarServiciosSolicitudBase(solicitud, req);
+        guardarFormulariosBase(cot, req);
+
+        List<CotizacionDetalle> detallesActuales = detalleRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion());
+        detalleRepo.deleteAll(detallesActuales);
+        detalleRepo.flush();
+
+        TotalesCotizacionBase totales = generarDetallesCotizacionBase(cot, req);
+
+        cot.setTotalManoObra(totales.manoObra);
+        cot.setTotalMateriales(totales.materiales);
+        cot.setTotalProductos(totales.productos);
+        cot.setTotalEstimado(totales.manoObra.add(totales.materiales).add(totales.productos));
+
+        cotizacionRepo.save(cot);
+
+        guardarObservacion(cot, usuario, TipoObservacion.COMENTARIO, "Cotizacion base actualizada");
+
+        return construirCotizacionBaseResponse(solicitud, cot, req, "Cotizacion base actualizada correctamente");
+    }
+
+    private CotizacionBaseFormularioResponse construirFormularioBaseResponse(Cotizacion cot) {
+        CotizacionBaseFormularioResponse resp = new CotizacionBaseFormularioResponse();
+        resp.setIdCotizacion(cot.getIdCotizacion());
+        resp.setSolicitudId(cot.getSolicitud().getIdSolicitud());
+        resp.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
+        resp.setEstado(cot.getEstado().name());
+        resp.setServiciosSeleccionados(mapearServiciosSolicitud(cot.getSolicitud()));
+
+        cotizacionManoObraRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+            .ifPresent(mano -> {
+                ManoObraBaseRequest dto = new ManoObraBaseRequest();
+                dto.setMedidaAreaPrivada(mano.getMedidaAreaPrivada());
+                dto.setCantidadBanos(mano.getCantidadBanos());
+                dto.setTipoCielo(mano.getTipoCielo());
+                dto.setDivisionPared(mano.getDivisionPared());
+                resp.setManoObra(dto);
+            });
+
+        cotizacionCarpinteriaRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+            .ifPresent(carp -> {
+                CarpinteriaBaseRequest dto = new CarpinteriaBaseRequest();
+                dto.setCantidadCloset(carp.getCantidadCloset());
+                dto.setCantidadPuertas(carp.getCantidadPuertas());
+                dto.setMuebleAltoCocina(carp.getMuebleAltoCocina());
+                dto.setMuebleBajoCocina(carp.getMuebleBajoCocina());
+                dto.setMuebleBarra(carp.getMuebleBarra());
+                dto.setCantidadBanos(carp.getCantidadBanos());
+                dto.setCantidadMuebleAltoBano(carp.getCantidadMuebleAltoBano());
+                dto.setCantidadMuebleBajoBano(carp.getCantidadMuebleBajoBano());
+                resp.setCarpinteria(dto);
+            });
+
+        cotizacionVidrioRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+            .ifPresent(vidrio -> {
+                VidrioBaseRequest dto = new VidrioBaseRequest();
+                dto.setCantidadBanos(vidrio.getCantidadBanos());
+                dto.setTipoApertura(vidrio.getTipoApertura());
+                dto.setColorAccesorios(vidrio.getColorAccesorios());
+                dto.setTieneNicho(vidrio.getTieneNicho());
+                resp.setVidrio(dto);
+            });
+
+        cotizacionMezonRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+            .ifPresent(mezon -> {
+                MezonBaseRequest dto = new MezonBaseRequest();
+                dto.setMezonCocina(mezon.getMezonCocina());
+                dto.setMezonBarra(mezon.getMezonBarra());
+                dto.setMezonLavamanos(mezon.getMezonLavamanos());
+                dto.setMedidaCocina(mezon.getMedidaCocina());
+                dto.setMedidaBarra(mezon.getMedidaBarra());
+                dto.setMedidaLavamanos(mezon.getMedidaLavamanos());
+                resp.setMezon(dto);
+            });
+
+        return resp;
+    }
+
+    private List<SolicitudServicioItem> mapearServiciosSolicitud(Solicitud solicitud) {
+        if (solicitud == null || solicitud.getServiciosSeleccionados() == null) {
+            return new ArrayList<>();
+        }
+
+        return solicitud.getServiciosSeleccionados().stream()
+            .map(item -> {
+                SolicitudServicioItem dto = new SolicitudServicioItem();
+                dto.setIdSolicitudServicio(item.getIdSolicitudServicio());
+                dto.setEstado(item.getEstado());
+
+                if (item.getServicios() != null) {
+                    dto.setIdServicio(item.getServicios().getIdServicio());
+                    dto.setNombreServicio(item.getServicios().getNombreServicio());
+                }
+
+                return dto;
+            })
+            .collect(Collectors.toList());
+    }
+
+    private void validarServiciosSolicitudBase(Solicitud solicitud, GenerarCotizacionBaseRequest req) {
+        if (solicitud == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada");
+        }
+
+        if (!"COTIZACION_BASE".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La solicitud no corresponde a cotizacion base");
+        }
+
+        Set<Integer> idsServiciosSolicitud = solicitud.getServiciosSeleccionados()
+                .stream()
+                .map((SolicitudServicios item) -> item.getServicios().getIdServicio())
+                .collect(Collectors.toSet());
+
+        if (req.getManoObra() != null && !idsServiciosSolicitud.contains(SERVICIO_MANO_OBRA)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Mano de Obra");
+        }
+
+        if (req.getCarpinteria() != null && !idsServiciosSolicitud.contains(SERVICIO_CARPINTERIA)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Carpinteria");
+        }
+
+        if (req.getVidrio() != null && !idsServiciosSolicitud.contains(SERVICIO_VIDRIO)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Divisiones en Vidrio");
+        }
+
+        if (req.getMezon() != null && !idsServiciosSolicitud.contains(SERVICIO_MEZON)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Meson Granito");
+        }
+
+        if (req.getManoObra() == null
+                && req.getCarpinteria() == null
+                && req.getVidrio() == null
+                && req.getMezon() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar al menos una seccion de cotizacion");
+        }
+    }
+
+    private void guardarFormulariosBase(Cotizacion cot, GenerarCotizacionBaseRequest req) {
+        if (req.getManoObra() != null) {
+            CotizacionManoObra mano = cotizacionManoObraRepo
+                .findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .orElseGet(() -> {
+                    CotizacionManoObra nuevo = new CotizacionManoObra();
+                    nuevo.setCotizacion(cot);
+                    return nuevo;
+                });
+            mano.setMedidaAreaPrivada(req.getManoObra().getMedidaAreaPrivada());
+            mano.setCantidadBanos(req.getManoObra().getCantidadBanos());
+            mano.setTipoCielo(req.getManoObra().getTipoCielo());
+            mano.setDivisionPared(req.getManoObra().getDivisionPared());
+            cotizacionManoObraRepo.save(mano);
+        } else {
+            cotizacionManoObraRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .ifPresent(cotizacionManoObraRepo::delete);
+        }
+
+        if (req.getCarpinteria() != null) {
+            CotizacionCarpinteria carp = cotizacionCarpinteriaRepo
+                .findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .orElseGet(() -> {
+                    CotizacionCarpinteria nuevo = new CotizacionCarpinteria();
+                    nuevo.setCotizacion(cot);
+                    return nuevo;
+                });
+            carp.setCantidadCloset(valorEntero(req.getCarpinteria().getCantidadCloset()));
+            carp.setCantidadPuertas(valorEntero(req.getCarpinteria().getCantidadPuertas()));
+            carp.setMuebleAltoCocina(valorDecimal(req.getCarpinteria().getMuebleAltoCocina()));
+            carp.setMuebleBajoCocina(valorDecimal(req.getCarpinteria().getMuebleBajoCocina()));
+            carp.setMuebleBarra(valorDecimal(req.getCarpinteria().getMuebleBarra()));
+            carp.setCantidadBanos(valorEntero(req.getCarpinteria().getCantidadBanos()));
+            carp.setCantidadMuebleAltoBano(valorEntero(req.getCarpinteria().getCantidadMuebleAltoBano()));
+            carp.setCantidadMuebleBajoBano(valorEntero(req.getCarpinteria().getCantidadMuebleBajoBano()));
+            cotizacionCarpinteriaRepo.save(carp);
+        } else {
+            cotizacionCarpinteriaRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .ifPresent(cotizacionCarpinteriaRepo::delete);
+        }
+
+        if (req.getVidrio() != null) {
+            CotizacionVidrio vidrio = cotizacionVidrioRepo
+                .findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .orElseGet(() -> {
+                    CotizacionVidrio nuevo = new CotizacionVidrio();
+                    nuevo.setCotizacion(cot);
+                    return nuevo;
+                });
+            vidrio.setCantidadBanos(req.getVidrio().getCantidadBanos());
+            vidrio.setTipoApertura(req.getVidrio().getTipoApertura());
+            vidrio.setColorAccesorios(req.getVidrio().getColorAccesorios());
+            vidrio.setTieneNicho(Boolean.TRUE.equals(req.getVidrio().getTieneNicho()));
+            cotizacionVidrioRepo.save(vidrio);
+        } else {
+            cotizacionVidrioRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .ifPresent(cotizacionVidrioRepo::delete);
+        }
+
+        if (req.getMezon() != null) {
+            CotizacionMezon mezon = cotizacionMezonRepo
+                .findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .orElseGet(() -> {
+                    CotizacionMezon nuevo = new CotizacionMezon();
+                    nuevo.setCotizacion(cot);
+                    return nuevo;
+                });
+            mezon.setMezonCocina(req.getMezon().getMezonCocina());
+            mezon.setMezonBarra(req.getMezon().getMezonBarra());
+            mezon.setMezonLavamanos(req.getMezon().getMezonLavamanos());
+            mezon.setMedidaCocina(valorDecimal(req.getMezon().getMedidaCocina()));
+            mezon.setMedidaBarra(valorDecimal(req.getMezon().getMedidaBarra()));
+            mezon.setMedidaLavamanos(valorDecimal(req.getMezon().getMedidaLavamanos()));
+            cotizacionMezonRepo.save(mezon);
+        } else {
+            cotizacionMezonRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
+                .ifPresent(cotizacionMezonRepo::delete);
+        }
+    }
+
+    private TotalesCotizacionBase generarDetallesCotizacionBase(Cotizacion cot, GenerarCotizacionBaseRequest req) {
+        TotalesCotizacionBase totales = new TotalesCotizacionBase();
+        LocalDate hoy = LocalDate.now();
+
+        if (req.getManoObra() != null) {
+            List<CatalogoItem> actividadesManoObra = catalogoItemRepo.buscarVigentesPorServicioYTipo(
+                    SERVICIO_MANO_OBRA,
+                    TipoItemCotizacion.ACTIVIDAD,
+                    hoy
+            );
+
+            for (CatalogoItem actividad : actividadesManoObra) {
+                if (!actividadAplicaParaManoObra(actividad, req.getManoObra())) {
+                    continue;
+                }
+
+                BigDecimal valorActividad = calcularValorActividad(actividad, req);
+
+                if (valorActividad.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+
+                CotizacionDetalle detActividad = new CotizacionDetalle();
+                detActividad.setCotizacion(cot);
+                detActividad.setServicio(actividad.getServicio());
+                detActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
+                detActividad.setCategoria(actividad.getCategoria());
+                detActividad.setSemana(actividad.getSemana());
+                detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
+                detActividad.setActividadMaterial(actividad.getNombreItem());
+                detActividad.setCantidad(BigDecimal.ONE);
+                detActividad.setPrecioUnitarioVenta(valorActividad);
+                detActividad.setSubtotalVenta(valorActividad);
+                detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
+                detActividad.setSubtotalProveedor(BigDecimal.ZERO);
+
+                detalleRepo.save(detActividad);
+                totales.manoObra = totales.manoObra.add(valorActividad);
+
+                List<ActividadMaterial> materialesRelacionados =
+                        actividadMaterialRepo.findByActividad_IdCatalogoItemAndActivoTrue(
+                                actividad.getIdCatalogoItem()
+                        );
+
+                for (ActividadMaterial rel : materialesRelacionados) {
+                    CatalogoItem material = rel.getMaterial();
+
+                    if (material == null || material.getActivo() == null || !material.getActivo()) {
+                        continue;
+                    }
+
+                    BigDecimal cantidadMaterial = calcularCantidadMaterial(rel, req);
+
+                    if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
+                        continue;
+                    }
+
+                    BigDecimal precioVenta = material.getPrecioUnitarioVenta() != null
+                            ? material.getPrecioUnitarioVenta()
+                            : BigDecimal.ZERO;
+
+                    BigDecimal precioProveedor = material.getPrecioUnitarioProveedor() != null
+                            ? material.getPrecioUnitarioProveedor()
+                            : BigDecimal.ZERO;
+
+                    BigDecimal subtotalVenta = cantidadMaterial.multiply(precioVenta);
+                    BigDecimal subtotalProveedor = cantidadMaterial.multiply(precioProveedor);
+
+                    CotizacionDetalle detMaterial = new CotizacionDetalle();
+                    detMaterial.setCotizacion(cot);
+                    detMaterial.setServicio(material.getServicio());
+                    detMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
+                    detMaterial.setCategoria(material.getCategoria());
+                    detMaterial.setSemana(rel.getSemana() != null ? rel.getSemana() : actividad.getSemana());
+                    detMaterial.setDescripcion(obtenerDescripcionCatalogo(material));
+                    detMaterial.setActividadMaterial(actividad.getNombreItem());
+                    detMaterial.setCantidad(cantidadMaterial);
+                    detMaterial.setPrecioUnitarioVenta(precioVenta);
+                    detMaterial.setSubtotalVenta(subtotalVenta);
+                    detMaterial.setPrecioUnitarioProveedor(precioProveedor);
+                    detMaterial.setSubtotalProveedor(subtotalProveedor);
+
+                    detalleRepo.save(detMaterial);
+                    totales.materiales = totales.materiales.add(subtotalVenta);
+                }
+            }
+        }
+
+        if (req.getCarpinteria() != null) {
+            List<CatalogoItem> productosCarpinteria = catalogoItemRepo.buscarVigentesPorServicioYTipo(
+                    SERVICIO_CARPINTERIA,
+                    TipoItemCotizacion.PRODUCTO,
+                    hoy
+            );
+
+            for (CatalogoItem producto : productosCarpinteria) {
+                BigDecimal cantidad = obtenerCantidadProductoCarpinteria(producto, req.getCarpinteria());
+
+                if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+
+                BigDecimal precioVenta = producto.getPrecioUnitarioVenta() != null
+                        ? producto.getPrecioUnitarioVenta()
+                        : BigDecimal.ZERO;
+
+                BigDecimal precioProveedor = producto.getPrecioUnitarioProveedor() != null
+                        ? producto.getPrecioUnitarioProveedor()
+                        : BigDecimal.ZERO;
+
+                BigDecimal subtotalVenta = cantidad.multiply(precioVenta);
+                BigDecimal subtotalProveedor = cantidad.multiply(precioProveedor);
+
+                CotizacionDetalle detProducto = new CotizacionDetalle();
+                detProducto.setCotizacion(cot);
+                detProducto.setServicio(producto.getServicio());
+                detProducto.setTipoItem(TipoItemCotizacion.PRODUCTO);
+                detProducto.setCategoria(producto.getCategoria());
+                detProducto.setSemana(producto.getSemana());
+                detProducto.setDescripcion(obtenerDescripcionCatalogo(producto));
+                detProducto.setActividadMaterial(producto.getNombreItem());
+                detProducto.setCantidad(cantidad);
+                detProducto.setUnidad(producto.getUnidad());
+                detProducto.setPrecioUnitarioVenta(precioVenta);
+                detProducto.setSubtotalVenta(subtotalVenta);
+                detProducto.setPrecioUnitarioProveedor(precioProveedor);
+                detProducto.setSubtotalProveedor(subtotalProveedor);
+
+                detalleRepo.save(detProducto);
+                totales.productos = totales.productos.add(subtotalVenta);
+            }
+        }
+
+        if (req.getVidrio() != null) {
+            List<CatalogoItem> productosVidrio = catalogoItemRepo.buscarVigentesPorServicioYTipo(
+                    SERVICIO_VIDRIO,
+                    TipoItemCotizacion.PRODUCTO,
+                    hoy
+            );
+
+            CatalogoItem productoVidrio = seleccionarProductoVidrio(productosVidrio, req.getVidrio());
+
+            if (productoVidrio != null) {
+                BigDecimal cantidad = BigDecimal.valueOf(req.getVidrio().getCantidadBanos());
+                BigDecimal subtotalVenta = guardarDetalleProducto(cot, productoVidrio, cantidad);
+                totales.productos = totales.productos.add(subtotalVenta);
+            }
+        }
+
+        if (req.getMezon() != null) {
+            List<CatalogoItem> productosMezon = catalogoItemRepo.buscarVigentesPorServicioYTipo(
+                    SERVICIO_MEZON,
+                    TipoItemCotizacion.PRODUCTO,
+                    hoy
+            );
+
+            if (!productosMezon.isEmpty()) {
+                BigDecimal subtotalVenta = guardarDetallesProductosMezon(cot, productosMezon, req.getMezon());
+                totales.productos = totales.productos.add(subtotalVenta);
+            }
+        }
+
+        return totales;
+    }
+
+    private CotizacionBaseResponse construirCotizacionBaseResponse(
+            Solicitud solicitud,
+            Cotizacion cot,
+            GenerarCotizacionBaseRequest req,
+            String mensaje
+    ) {
+        CotizacionBaseResponse resp = new CotizacionBaseResponse();
+        resp.setSolicitudId(solicitud.getIdSolicitud());
+        resp.setIdCotizacion(cot.getIdCotizacion());
+        resp.setMensaje(mensaje);
+        resp.setManoObraProcesada(req.getManoObra() != null);
+        resp.setCarpinteriaProcesada(req.getCarpinteria() != null);
+        resp.setVidrioProcesado(req.getVidrio() != null);
+        resp.setMezonProcesado(req.getMezon() != null);
         return resp;
     }
     
@@ -1531,7 +1984,29 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
             .map(i -> i.getSubtotalVenta() == null ? BigDecimal.ZERO : i.getSubtotalVenta())
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    private Double obtenerMedidaAreaPrivadaCotizacion(Integer idCotizacion) {
+        return cotizacionManoObraRepo.findByCotizacionIdCotizacion(idCotizacion)
+            .map(CotizacionManoObra::getMedidaAreaPrivada)
+            .orElse(null);
+    }
+
+    private List<String> obtenerNombresServiciosCotizacion(Cotizacion cotizacion) {
+        if (cotizacion == null ||
+            cotizacion.getSolicitud() == null ||
+            cotizacion.getSolicitud().getServiciosSeleccionados() == null) {
+            return new ArrayList<>();
+        }
+
+        return cotizacion.getSolicitud().getServiciosSeleccionados().stream()
+            .map(SolicitudServicios::getServicios)
+            .filter(servicio -> servicio != null && servicio.getNombreServicio() != null)
+            .map(Servicios::getNombreServicio)
+            .distinct()
+            .collect(Collectors.toList());
+    }
     
+    @Transactional
     public CotizacionVistaCompletaResponse obtenerVistaCompleta(Integer idUsuario, Integer idCotizacion) {
     Cotizacion cot = getCotizacionDelUsuario(idUsuario, idCotizacion);
 
@@ -1574,6 +2049,8 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     resp.setIdCotizacion(cot.getIdCotizacion());
     resp.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
     resp.setEstado(cot.getEstado().name());
+    resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
+    resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
 
     resp.setTotalManoObra(cot.getTotalManoObra() != null ? cot.getTotalManoObra() : BigDecimal.ZERO);
     resp.setTotalMateriales(cot.getTotalMateriales() != null ? cot.getTotalMateriales() : BigDecimal.ZERO);
@@ -1591,6 +2068,7 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     }
     
     // VISTA COMPLETA PARA DMIN Y SUPERVISOR
+    @Transactional
     public CotizacionVistaCompletaResponse obtenerVistaCompletaAdminSupervisor(Integer idCotizacion) {
         Cotizacion cot = cotizacionRepo.findById(idCotizacion)
             .orElseThrow(() -> new ResponseStatusException(
@@ -1636,6 +2114,8 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         resp.setIdCotizacion(cot.getIdCotizacion());
         resp.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
         resp.setEstado(cot.getEstado().name());
+        resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
+        resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
 
         resp.setTotalManoObra(cot.getTotalManoObra() != null ? cot.getTotalManoObra() : BigDecimal.ZERO);
         resp.setTotalMateriales(cot.getTotalMateriales() != null ? cot.getTotalMateriales() : BigDecimal.ZERO);

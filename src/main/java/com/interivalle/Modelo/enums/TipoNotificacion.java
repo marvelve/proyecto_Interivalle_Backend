@@ -12,6 +12,7 @@ package com.interivalle.Modelo.enums;
 public enum TipoNotificacion {
     AVANCE_REGISTRADO,
     VISITA_TECNICA_CREADA,
+    VISITA_TECNICA_CONFIRMADA,
     VISITA_TECNICA_REPROGRAMADA,
     COTIZACION_APROBADA,
     CRONOGRAMA_GENERADO

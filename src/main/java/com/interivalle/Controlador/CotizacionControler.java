@@ -4,8 +4,11 @@
  */
 package com.interivalle.Controlador;
 
+import com.interivalle.DTO.CotizacionBaseFormularioResponse;
+import com.interivalle.DTO.CotizacionBaseResponse;
 import com.interivalle.DTO.CotizacionResponse;
 import com.interivalle.DTO.CotizacionVistaCompletaResponse;
+import com.interivalle.DTO.GenerarCotizacionBaseRequest;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Repositorio.UsuarioRepositorio;
 import com.interivalle.Servicio.CotizacionService;
@@ -95,6 +98,43 @@ public class CotizacionControler {
         }
 
         return cotizacionService.obtenerVistaCompletaAdminSupervisor(idCotizacion);
+    }
+
+    @GetMapping("/{idCotizacion}/base-formulario")
+    public CotizacionBaseFormularioResponse obtenerFormularioBaseGeneral(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication) {
+
+        validarAdminSupervisor(authentication);
+        return cotizacionService.obtenerFormularioBaseAdminSupervisor(idCotizacion);
+    }
+
+    @PutMapping("/{idCotizacion}/base")
+    public CotizacionBaseResponse actualizarBaseGeneral(
+            @PathVariable Integer idCotizacion,
+            @RequestBody GenerarCotizacionBaseRequest req,
+            Authentication authentication) {
+
+        validarAdminSupervisor(authentication);
+        return cotizacionService.actualizarCotizacionBaseAdminSupervisor(idCotizacion, req);
+    }
+
+    private void validarAdminSupervisor(Authentication authentication) {
+        String correo = authentication.getName();
+
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(correo)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Usuario no encontrado"));
+
+        Integer idRol = usuario.getIdRol();
+
+        if (idRol != 1 && idRol != 2) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "No tiene permisos para gestionar esta cotizacion"
+            );
+        }
     }
     
 }

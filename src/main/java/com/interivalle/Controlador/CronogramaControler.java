@@ -4,6 +4,8 @@
  */
 package com.interivalle.Controlador;
 
+import com.interivalle.DTO.ActualizarCronogramaDetalleRequest;
+import com.interivalle.DTO.CronogramaDetalleVistaDTO;
 import com.interivalle.DTO.CronogramaListResponse;
 import com.interivalle.DTO.CronogramaResponse;
 import com.interivalle.DTO.CronogramaVistaResponse;
@@ -11,6 +13,7 @@ import com.interivalle.Servicio.CronogramaService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 /**
@@ -35,5 +38,13 @@ public class CronogramaControler {
     public List<CronogramaListResponse> listarCronogramas(Authentication auth) {
         String correoUsuario = auth.getName();
         return cronogramaService.listarCronogramasPorUsuario(correoUsuario);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PutMapping("/detalle/{idDetalle}")
+    public ResponseEntity<CronogramaDetalleVistaDTO> actualizarDetalle(
+            @PathVariable Integer idDetalle,
+            @RequestBody ActualizarCronogramaDetalleRequest req) {
+        return ResponseEntity.ok(cronogramaService.actualizarDetalleEnProceso(idDetalle, req));
     }
 }

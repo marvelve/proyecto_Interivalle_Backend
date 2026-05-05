@@ -18,4 +18,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CronogramaDetalleRepositorio extends JpaRepository<CronogramaDetalle, Integer> {
     List<CronogramaDetalle> findByCronograma_IdCronogramaOrderBySemanaAsc(Integer idCronograma);
+    List<CronogramaDetalle> findByCronograma_IdCronogramaAndSemana(Integer idCronograma, Integer semana);
 }
