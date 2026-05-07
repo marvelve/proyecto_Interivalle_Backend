@@ -1,6 +1,11 @@
 package com.interivalle.DTO;
 
 import java.util.List;
+/**
+ *
+ * @author mary_
+ */
+
 
 public class CotizacionBaseFormularioResponse {
 

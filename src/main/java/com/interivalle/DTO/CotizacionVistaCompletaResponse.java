@@ -3,6 +3,12 @@ package com.interivalle.DTO;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ *
+ * @author mary_
+ */
+
+
 public class CotizacionVistaCompletaResponse {
 
     private Integer idCotizacion;
@@ -10,6 +16,8 @@ public class CotizacionVistaCompletaResponse {
     private String estado;
     private Double medidaAreaPrivada;
     private List<String> serviciosSeleccionados;
+    private Boolean cronogramaGenerado;
+    private Integer idCronograma;
 
     private BigDecimal totalManoObra;
     private BigDecimal totalMateriales;
@@ -61,6 +69,22 @@ public class CotizacionVistaCompletaResponse {
 
     public void setServiciosSeleccionados(List<String> serviciosSeleccionados) {
         this.serviciosSeleccionados = serviciosSeleccionados;
+    }
+
+    public Boolean getCronogramaGenerado() {
+        return cronogramaGenerado;
+    }
+
+    public void setCronogramaGenerado(Boolean cronogramaGenerado) {
+        this.cronogramaGenerado = cronogramaGenerado;
+    }
+
+    public Integer getIdCronograma() {
+        return idCronograma;
+    }
+
+    public void setIdCronograma(Integer idCronograma) {
+        this.idCronograma = idCronograma;
     }
 
     public BigDecimal getTotalManoObra() {

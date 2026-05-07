@@ -1,6 +1,11 @@
 package com.interivalle.DTO;
 
 import java.math.BigDecimal;
+/**
+ *
+ * @author mary_
+ */
+
 
 public class ActividadRequest {
 

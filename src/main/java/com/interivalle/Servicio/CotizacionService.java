@@ -25,6 +25,7 @@ import com.interivalle.DTO.SolicitudServicioItem;
 import com.interivalle.DTO.VidrioBaseRequest;
 import com.interivalle.Modelo.ActividadMaterial;
 import com.interivalle.Modelo.CatalogoItem;
+import com.interivalle.Modelo.Cronograma;
 import com.interivalle.Modelo.Cotizacion;
 import com.interivalle.Modelo.CotizacionCarpinteria;
 import com.interivalle.Modelo.CotizacionDetalle;
@@ -51,6 +52,7 @@ import com.interivalle.Repositorio.CotizacionMezonRepositorio;
 import com.interivalle.Repositorio.CotizacionObservacionRepositorio;
 import com.interivalle.Repositorio.CotizacionRepositorio;
 import com.interivalle.Repositorio.CotizacionVidrioRepositorio;
+import com.interivalle.Repositorio.CronogramaRepositorio;
 import com.interivalle.Repositorio.ServiciosRepositorio;
 import com.interivalle.Repositorio.SolicitudRepositorio;
 import com.interivalle.Repositorio.UsuarioRepositorio;
@@ -107,6 +109,7 @@ public class CotizacionService {
     @Autowired private CotizacionCarpinteriaRepositorio cotizacionCarpinteriaRepo;
     @Autowired private CotizacionVidrioRepositorio cotizacionVidrioRepo;
     @Autowired private CotizacionMezonRepositorio cotizacionMezonRepo;
+    @Autowired private CronogramaRepositorio cronogramaRepo;
     @Autowired private CronogramaService cronogramaServicio;
 
     // CREA COTIZACION MANUAL
@@ -222,7 +225,7 @@ public class CotizacionService {
         Cotizacion cot = cotizacionRepo.findById(idCotizacion)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
-                "Cotización no encontrada"
+                "CotizaciÃ³n no encontrada"
             ));
 
         return toResponseCompleto(cot);
@@ -319,11 +322,11 @@ public class CotizacionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
 
         if (!solicitud.getUsuario().getIdUsuario().equals(idUsuario)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes generar cotización para otra solicitud");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes generar cotizaciÃ³n para otra solicitud");
         }
 
         if (!"COTIZACION_BASE".equalsIgnoreCase(solicitud.getTipoSolicitud())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La solicitud no corresponde a cotización base");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La solicitud no corresponde a cotizaciÃ³n base");
         }
 
         Set<Integer> idsServiciosSolicitud = solicitud.getServiciosSeleccionados()
@@ -336,7 +339,7 @@ public class CotizacionService {
         }
 
         if (req.getCarpinteria() != null && !idsServiciosSolicitud.contains(SERVICIO_CARPINTERIA)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Carpintería");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio CarpinterÃ­a");
         }
 
         if (req.getVidrio() != null && !idsServiciosSolicitud.contains(SERVICIO_VIDRIO)) {
@@ -344,14 +347,14 @@ public class CotizacionService {
         }
 
         if (req.getMezon() != null && !idsServiciosSolicitud.contains(SERVICIO_MEZON)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio Mesón Granito");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud no contiene el servicio MesÃ³n Granito");
         }
 
         if (req.getManoObra() == null
                 && req.getCarpinteria() == null
                 && req.getVidrio() == null
                 && req.getMezon() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar al menos una sección de cotización");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar al menos una secciÃ³n de cotizaciÃ³n");
         }
 
         Cotizacion cot = new Cotizacion();
@@ -528,7 +531,7 @@ public class CotizacionService {
                 hoy
         );
 
-        System.out.println("Productos carpintería encontrados: " + productosCarpinteria.size());
+        System.out.println("Productos carpinterÃ­a encontrados: " + productosCarpinteria.size());
 
         for (CatalogoItem producto : productosCarpinteria) {
             BigDecimal cantidad = obtenerCantidadProductoCarpinteria(producto, req.getCarpinteria());
@@ -616,7 +619,7 @@ public class CotizacionService {
         CotizacionBaseResponse resp = new CotizacionBaseResponse();
         resp.setSolicitudId(solicitud.getIdSolicitud());
         resp.setIdCotizacion(cot.getIdCotizacion());
-        resp.setMensaje("Cotización base guardada correctamente");
+        resp.setMensaje("CotizaciÃ³n base guardada correctamente");
         resp.setManoObraProcesada(req.getManoObra() != null);
         resp.setCarpinteriaProcesada(req.getCarpinteria() != null);
         resp.setVidrioProcesado(req.getVidrio() != null);
@@ -1126,7 +1129,7 @@ private Integer obtenerCantidadSegunActividad(CatalogoItem actividad, GenerarCot
     }
 
     if (texto.contains("centrar luces") ||  texto.contains("punto electrico") || texto.contains("puntos electricos")) {
-        return req.getManoObra().getCantidadPuntosElectricos();
+        return obtenerCantidadPuntosElectricos(actividad, req.getManoObra());
     }
 
     return null;
@@ -1147,7 +1150,7 @@ private BigDecimal obtenerMetrosCuadradosSegunActividad(CatalogoItem actividad, 
         return req.getManoObra().getMetrosCuadradosCielo();
     }
 
-    if (nombre.contains("tapar tuberias") || nombre.contains("tapar tuberías")) {
+    if (nombre.contains("tapar tuberias") || nombre.contains("tapar tuberÃ­as")) {
         return primerValorPositivo(
                 req.getManoObra().getMetrosCuadradosTaparTuberias(),
                 obtenerM2DesdeParams(actividad.getParamsJson())
@@ -1217,7 +1220,7 @@ private boolean actividadAplicaParaManoObra(CatalogoItem actividad, ManoObraBase
     }
 
     if (texto.contains("centrar luces") || texto.contains("punto electrico") || texto.contains("puntos electricos")) {
-        return manoObra.getCantidadPuntosElectricos() != null && manoObra.getCantidadPuntosElectricos() > 0;
+        return obtenerCantidadPuntosElectricos(actividad, manoObra) > 0;
     }
 
     if (texto.contains("poyo")) {
@@ -1270,6 +1273,47 @@ private int obtenerCantidadPoyos(CatalogoItem actividad, ManoObraBaseRequest man
     }
 
     return 0;
+}
+
+private int obtenerCantidadPuntosElectricos(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
+    if (manoObra != null
+            && manoObra.getCantidadPuntosElectricos() != null
+            && manoObra.getCantidadPuntosElectricos() > 0) {
+        return manoObra.getCantidadPuntosElectricos();
+    }
+
+    Integer cantidadCatalogo = obtenerCantidadDesdeParams(actividad != null ? actividad.getParamsJson() : null);
+    if (cantidadCatalogo != null && cantidadCatalogo > 0) {
+        return cantidadCatalogo;
+    }
+
+    if (actividad != null && actividad.getFactor() != null && actividad.getFactor().compareTo(BigDecimal.ZERO) > 0) {
+        return actividad.getFactor().intValue();
+    }
+
+    return 0;
+}
+
+private Integer obtenerCantidadDesdeParams(String paramsJson) {
+    try {
+        if (paramsJson == null || paramsJson.trim().isEmpty()) {
+            return null;
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(paramsJson);
+        String[] clavesCantidad = { "CANT", "cant", "cantidad", "Cantidad", "cantidadBase" };
+
+        for (String clave : clavesCantidad) {
+            if (root.has(clave) && !root.get(clave).isNull()) {
+                return root.get(clave).decimalValue().intValue();
+            }
+        }
+
+        return null;
+    } catch (Exception e) {
+        return null;
+    }
 }
 
 private BigDecimal primerValorPositivo(BigDecimal... valores) {
@@ -1744,10 +1788,10 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
             }
 
             String textoLimpio = texto
-                    .replace('¤', 'n')
-                    .replace('¥', 'n')
-                    .replace("Ã±", "n")
-                    .replace("Ã‘", "n");
+                    .replace("Â¤", "n")
+                    .replace("Â¥", "n")
+                    .replace("ÃƒÂ±", "n")
+                    .replace("Ãƒâ€˜", "n");
 
             String sinAcentos = Normalizer.normalize(textoLimpio, Normalizer.Form.NFD)
                     .replaceAll("\\p{M}", "");
@@ -1770,7 +1814,7 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
 
     private Cotizacion getCotizacionDelUsuario(Integer idUsuario, Integer idCotizacion) {
         return cotizacionRepo.findByIdCotizacionAndSolicitud_Usuario_IdUsuario(idCotizacion, idUsuario)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotización no encontrada o sin acceso"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada o sin acceso"));
     }
 
     private void guardarObservacion(Cotizacion cot, Usuario usuario, TipoObservacion tipo, String mensaje) {
@@ -1804,6 +1848,7 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
         r.setSolicitudId(cot.getSolicitud().getIdSolicitud());
         r.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
         r.setNombreUsuario(cot.getSolicitud().getUsuario().getNombreUsuario());
+        r.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
 
         r.setTipo(cot.getTipo());
         r.setEstado(cot.getEstado());
@@ -1815,6 +1860,12 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
 
         r.setFechaCreacion(cot.getFechaCreacion());
         r.setFechaActualizacion(cot.getFechaActualizacion());
+
+        Cronograma cronograma = cronogramaRepo
+            .findByCotizacion_IdCotizacion(cot.getIdCotizacion())
+            .orElse(null);
+        r.setCronogramaGenerado(cronograma != null);
+        r.setIdCronograma(cronograma != null ? cronograma.getIdCronograma() : null);
 
         r.setDetalles(null);
         r.setSemanas(null);
@@ -2051,6 +2102,9 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     resp.setEstado(cot.getEstado().name());
     resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
     resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
+    Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion()).orElse(null);
+    resp.setCronogramaGenerado(cronograma != null);
+    resp.setIdCronograma(cronograma != null ? cronograma.getIdCronograma() : null);
 
     resp.setTotalManoObra(cot.getTotalManoObra() != null ? cot.getTotalManoObra() : BigDecimal.ZERO);
     resp.setTotalMateriales(cot.getTotalMateriales() != null ? cot.getTotalMateriales() : BigDecimal.ZERO);
@@ -2073,7 +2127,7 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         Cotizacion cot = cotizacionRepo.findById(idCotizacion)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
-                "Cotización no encontrada"
+                "CotizaciÃ³n no encontrada"
             ));
 
         List<CotizacionDetalle> detalles = detalleRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion());
@@ -2116,6 +2170,9 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         resp.setEstado(cot.getEstado().name());
         resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
         resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
+        Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion()).orElse(null);
+        resp.setCronogramaGenerado(cronograma != null);
+        resp.setIdCronograma(cronograma != null ? cronograma.getIdCronograma() : null);
 
         resp.setTotalManoObra(cot.getTotalManoObra() != null ? cot.getTotalManoObra() : BigDecimal.ZERO);
         resp.setTotalMateriales(cot.getTotalMateriales() != null ? cot.getTotalMateriales() : BigDecimal.ZERO);
@@ -2135,14 +2192,14 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     ///VALIDAR COTIZACION ANTES DE EDITAR    
     private void validarCotizacionEditable(Cotizacion cotizacion) {
         if (cotizacion == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotización no encontrada");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada");
         }
 
         if (cotizacion.getEstado() == EstadoCotizacion.APROBADA ||
             cotizacion.getEstado() == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "La cotización no se puede modificar porque está en estado " + cotizacion.getEstado().name()
+                "La cotizaciÃ³n no se puede modificar porque estÃ¡ en estado " + cotizacion.getEstado().name()
             );
         }
     }
@@ -2195,20 +2252,20 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
             );
         }
 
-        // solución rápida: un solo campo del formulario alimenta ambos muebles de baño
-       if (nombre.contains("mueble bajo baño") || nombre.contains("mueble bajo bano")) {
+        // soluciÃ³n rÃ¡pida: un solo campo del formulario alimenta ambos muebles de baÃ±o
+       if (nombre.contains("mueble bajo baÃ±o") || nombre.contains("mueble bajo bano")) {
         return req.getCantidadBanos() == null
                 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(req.getCantidadBanos());
         }
 
-        if (nombre.contains("mueble alto para baño") || nombre.contains("mueble alto para bano")) {
+        if (nombre.contains("mueble alto para baÃ±o") || nombre.contains("mueble alto para bano")) {
             return req.getCantidadBanos() == null
                     ? BigDecimal.ZERO
                     : BigDecimal.valueOf(req.getCantidadBanos());
         }
 
-        // todavía no existe en tu formulario actual
+        // todavÃ­a no existe en tu formulario actual
         if (nombre.contains("mueble barra")) {
             return cantidadDesdeDecimal(req.getMuebleBarra());
         }

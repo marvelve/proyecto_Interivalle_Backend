@@ -9,6 +9,7 @@ import com.interivalle.DTO.CronogramaDetalleVistaDTO;
 import com.interivalle.DTO.CronogramaListResponse;
 import com.interivalle.DTO.CronogramaResponse;
 import com.interivalle.DTO.CronogramaVistaResponse;
+import com.interivalle.DTO.FechaInicioDisponibleResponse;
 import com.interivalle.Servicio.CronogramaService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,12 @@ public class CronogramaControler {
     public List<CronogramaListResponse> listarCronogramas(Authentication auth) {
         String correoUsuario = auth.getName();
         return cronogramaService.listarCronogramasPorUsuario(correoUsuario);
+    }
+
+    @GetMapping("/fechas-inicio-disponibles")
+    public List<FechaInicioDisponibleResponse> listarFechasInicioDisponibles(
+            @RequestParam(defaultValue = "365") Integer dias) {
+        return cronogramaService.listarFechasInicioDisponibles(dias);
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")

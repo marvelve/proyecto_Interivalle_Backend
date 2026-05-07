@@ -2,6 +2,11 @@ package com.interivalle.DTO;
 
 import java.math.BigDecimal;
 
+/**
+ *
+ * @author mary_
+ */
+
 public class ProductoRequest {
 
     private Integer idServicio;

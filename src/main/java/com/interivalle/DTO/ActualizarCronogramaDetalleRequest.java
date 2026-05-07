@@ -1,5 +1,10 @@
 package com.interivalle.DTO;
 
+/**
+ *
+ * @author mary_
+ */
+
 public class ActualizarCronogramaDetalleRequest {
 
     private String trabajador;

@@ -3,6 +3,11 @@ package com.interivalle.DTO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ *
+ * @author mary_
+ */
+
 public class ActividadResponse {
 
     private Integer idActividad;

@@ -33,12 +33,15 @@ public class CotizacionResponse {
 
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private Boolean cronogramaGenerado;
+    private Integer idCronograma;
 
     private List<CotizacionDetalleResponse> detalles;
     private List<CotizacionSemanaResponse> semanas;
     private List<CotizacionObservacionResponse> observaciones;
     private List<CotizacionHistorialResponse> historial;
     private List<CotizacionActividadResponse> actividades;
+    private List<String> serviciosSeleccionados;
 
     public Integer getIdCotizacion() {
         return idCotizacion;
@@ -128,6 +131,22 @@ public class CotizacionResponse {
         this.fechaActualizacion = fechaActualizacion;
     }
 
+    public Boolean getCronogramaGenerado() {
+        return cronogramaGenerado;
+    }
+
+    public void setCronogramaGenerado(Boolean cronogramaGenerado) {
+        this.cronogramaGenerado = cronogramaGenerado;
+    }
+
+    public Integer getIdCronograma() {
+        return idCronograma;
+    }
+
+    public void setIdCronograma(Integer idCronograma) {
+        this.idCronograma = idCronograma;
+    }
+
     public List<CotizacionDetalleResponse> getDetalles() {
         return detalles;
     }
@@ -166,6 +185,14 @@ public class CotizacionResponse {
 
     public void setActividades(List<CotizacionActividadResponse> actividades) {
         this.actividades = actividades;
+    }
+
+    public List<String> getServiciosSeleccionados() {
+        return serviciosSeleccionados;
+    }
+
+    public void setServiciosSeleccionados(List<String> serviciosSeleccionados) {
+        this.serviciosSeleccionados = serviciosSeleccionados;
     }
 
     public String getNombreUsuario() {

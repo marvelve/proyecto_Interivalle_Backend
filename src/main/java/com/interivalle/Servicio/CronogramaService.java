@@ -10,6 +10,7 @@ import com.interivalle.DTO.CronogramaDetalleVistaDTO;
 import com.interivalle.DTO.CronogramaListResponse;
 import com.interivalle.DTO.CronogramaResponse;
 import com.interivalle.DTO.CronogramaVistaResponse;
+import com.interivalle.DTO.FechaInicioDisponibleResponse;
 import com.interivalle.DTO.SemanaCronogramaDTO;
 import com.interivalle.Modelo.AvanceSemanal;
 import com.interivalle.Modelo.Cotizacion;
@@ -42,8 +43,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -60,6 +63,7 @@ public class CronogramaService {
     private static final int SERVICIO_CARPINTERIA = 2;
     private static final int SERVICIO_VIDRIO = 3;
     private static final int SERVICIO_MEZON = 4;
+    private static final int MAX_PROYECTOS_POR_FECHA_INICIO = 5;
 
     @Autowired
     private CronogramaRepositorio cronogramaRepo;
@@ -94,10 +98,10 @@ public class CronogramaService {
     public CronogramaVistaResponse obtenerVistaPorCotizacion(Integer idCotizacion) {
 
         Cotizacion cotizacion = cotizacionRepo.findById(idCotizacion)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotización no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada"));
 
         Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(idCotizacion)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cronograma no encontrado para la cotización"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cronograma no encontrado para la cotizaciÃ³n"));
 
         sincronizarCronogramaConAvances(cronograma);
 
@@ -156,7 +160,7 @@ public class CronogramaService {
 
         for (int i = 1; i <= maxSemana; i++) {
             LocalDate inicioSemana = inicioPlanificado.plusWeeks(i - 1);
-            LocalDate finSemana = inicioSemana.plusDays(5); // lunes a sábado
+            LocalDate finSemana = inicioSemana.plusDays(5); // lunes a sÃ¡bado
             semanas.add(new SemanaCronogramaDTO(i, inicioSemana, finSemana));
         }
 
@@ -167,7 +171,7 @@ public class CronogramaService {
         if (fecha == null) return null;
 
         DayOfWeek dia = fecha.getDayOfWeek();
-        if (dia != DayOfWeek.THURSDAY && dia != DayOfWeek.FRIDAY && dia != DayOfWeek.SATURDAY) {
+        if (dia != DayOfWeek.FRIDAY && dia != DayOfWeek.SATURDAY) {
             return fecha;
         }
 
@@ -175,6 +179,60 @@ public class CronogramaService {
             fecha = fecha.plusDays(1);
         }
         return fecha;
+    }
+
+    public List<FechaInicioDisponibleResponse> listarFechasInicioDisponibles(Integer dias) {
+        int diasConsulta = dias != null ? Math.max(1, Math.min(dias, 365)) : 365;
+        LocalDate hoy = LocalDate.now();
+        Set<LocalDate> fechasEvaluadas = new LinkedHashSet<>();
+        List<FechaInicioDisponibleResponse> fechasDisponibles = new ArrayList<>();
+
+        for (int i = 1; i <= diasConsulta; i++) {
+            LocalDate fechaInicio = ajustarFechaInicioObra(hoy.plusDays(i));
+
+            if (fechaInicio == null
+                    || !fechaInicio.isAfter(hoy)
+                    || fechaInicio.getDayOfWeek() == DayOfWeek.SUNDAY
+                    || !fechasEvaluadas.add(fechaInicio)) {
+                continue;
+            }
+
+            long cantidadProyectos = cronogramaRepo.countByFechaInicio(fechaInicio);
+            boolean disponible = cantidadProyectos < MAX_PROYECTOS_POR_FECHA_INICIO;
+
+            if (disponible) {
+                fechasDisponibles.add(new FechaInicioDisponibleResponse(
+                        fechaInicio,
+                        cantidadProyectos,
+                        disponible
+                ));
+            }
+        }
+
+        fechasDisponibles.sort(Comparator.comparing(FechaInicioDisponibleResponse::getFechaInicio));
+        return fechasDisponibles;
+    }
+
+    private void validarFechaInicioDisponible(LocalDate fechaInicio) {
+        if (fechaInicio == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de inicio es obligatoria");
+        }
+
+        if (!fechaInicio.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de inicio debe ser futura");
+        }
+
+        if (fechaInicio.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de inicio no puede ser domingo");
+        }
+
+        long cantidadProyectos = cronogramaRepo.countByFechaInicio(fechaInicio);
+        if (cantidadProyectos >= MAX_PROYECTOS_POR_FECHA_INICIO) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La fecha de inicio seleccionada ya tiene 5 proyectos asociados. Selecciona otra fecha."
+            );
+        }
     }
 
     private List<CronogramaDetalleVistaDTO> mapearDetalles(List<CronogramaDetalle> detalles) {
@@ -218,7 +276,6 @@ public class CronogramaService {
                     "Solo se pueden editar actividades en estado EN_PROCESO"
             );
         }
-
         detalle.setTrabajadorAsignado(limpiarTexto(req != null ? req.getTrabajador() : null));
         detalle.setNovedades(limpiarTexto(req != null ? req.getNovedades() : null));
 
@@ -409,7 +466,7 @@ public class CronogramaService {
     public CronogramaResponse crearDesdeCotizacionAprobada(Integer idCotizacion, LocalDate fechaInicio) {
 
     if (idCotizacion == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cotización es obligatoria");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cotizaciÃ³n es obligatoria");
     }
 
     if (fechaInicio == null) {
@@ -422,12 +479,12 @@ public class CronogramaService {
 
     return crearCronograma(req);
 }
-    
+
     @Transactional
     public CronogramaResponse crearCronograma(CrearCronogramaRequest req) {
 
         if (req == null || req.getIdCotizacion() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cotización es obligatoria");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cotizaciÃ³n es obligatoria");
         }
 
         if (req.getFechaInicio() == null) {
@@ -436,17 +493,19 @@ public class CronogramaService {
 
         Cotizacion cotizacion = cotizacionRepo.findById(req.getIdCotizacion())
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Cotización no encontrada"));
+                        HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada"));
+
 
         Optional<Cronograma> existente = cronogramaRepo.findByCotizacion_IdCotizacion(req.getIdCotizacion());
         if (existente.isPresent()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Ya existe un cronograma para esta cotización"
+                    "Ya existe un cronograma para esta cotizaciÃ³n"
             );
         }
 
         LocalDate inicioPlanificado = ajustarFechaInicioObra(req.getFechaInicio());
+        validarFechaInicioDisponible(inicioPlanificado);
 
         Cronograma cronograma = new Cronograma();
         cronograma.setCotizacion(cotizacion);
@@ -786,12 +845,12 @@ public class CronogramaService {
         return texto == null
                 ? ""
                 : texto.trim().toUpperCase()
-                        .replace("Á", "A")
-                        .replace("É", "E")
-                        .replace("Í", "I")
-                        .replace("Ó", "O")
-                        .replace("Ú", "U")
-                        .replace("Ñ", "N");
+                        .replace("Ã", "A")
+                        .replace("Ã‰", "E")
+                        .replace("Ã", "I")
+                        .replace("Ã“", "O")
+                        .replace("Ãš", "U")
+                        .replace("Ã‘", "N");
     }
     
     
@@ -822,17 +881,19 @@ public class CronogramaService {
         res.setId(cronograma.getIdCronograma());
         res.setIdCronograma(cronograma.getIdCronograma());
 
-        if (cronograma.getCotizacion() != null) {
-            res.setIdCotizacion(cronograma.getCotizacion().getIdCotizacion());
+        Cotizacion cotizacion = cronograma.getCotizacion();
 
-            if (cronograma.getCotizacion().getSolicitud() != null) {
+        if (cotizacion != null) {
+            res.setIdCotizacion(cotizacion.getIdCotizacion());
+
+            if (cotizacion.getSolicitud() != null) {
                 res.setNombreProyecto(
-                        cronograma.getCotizacion().getSolicitud().getNombreProyectoUsuario()
+                        cotizacion.getSolicitud().getNombreProyectoUsuario()
                 );
 
-                if (cronograma.getCotizacion().getSolicitud().getUsuario() != null) {
+                if (cotizacion.getSolicitud().getUsuario() != null) {
                     res.setNombreCliente(
-                            cronograma.getCotizacion().getSolicitud().getUsuario().getNombreUsuario()
+                            cotizacion.getSolicitud().getUsuario().getNombreUsuario()
                     );
                 }
             }

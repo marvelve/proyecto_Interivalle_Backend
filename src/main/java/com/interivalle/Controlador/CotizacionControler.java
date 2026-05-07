@@ -119,7 +119,7 @@ public class CotizacionControler {
         return cotizacionService.actualizarCotizacionBaseAdminSupervisor(idCotizacion, req);
     }
 
-    private void validarAdminSupervisor(Authentication authentication) {
+    private Usuario validarAdminSupervisor(Authentication authentication) {
         String correo = authentication.getName();
 
         Usuario usuario = usuarioRepo.findByCorreoUsuario(correo)
@@ -135,6 +135,8 @@ public class CotizacionControler {
                 "No tiene permisos para gestionar esta cotizacion"
             );
         }
+
+        return usuario;
     }
     
 }
