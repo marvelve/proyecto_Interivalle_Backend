@@ -46,6 +46,9 @@ public class Actividad {
 
     @Column(name = "params_json", columnDefinition = "TEXT")
     private String paramsJson;
+    
+    @Column(name = "variable_base", length = 80)
+    private String variable_base;
 
     @Column(name = "factor", precision = 12, scale = 4)
     private BigDecimal factor;
@@ -179,6 +182,23 @@ public class Actividad {
         this.paramsJson = paramsJson;
     }
 
+    public String getVariable_base() {
+        return variable_base;
+    }
+
+    public void setVariable_base(String variable_base) {
+        this.variable_base = variable_base;
+    }
+
+    public String getVariableBase() {
+        return variable_base;
+    }
+
+    public void setVariableBase(String variableBase) {
+        this.variable_base = variableBase;
+    }
+
+    
     public BigDecimal getFactor() {
         return factor;
     }

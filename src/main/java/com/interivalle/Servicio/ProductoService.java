@@ -89,6 +89,8 @@ public class ProductoService {
             producto.setCategoria(item.getCategoria());
             producto.setUnidad(item.getUnidad());
             producto.setModoPrecio(item.getModoPrecio());
+            producto.setFormulaCode(item.getFormulaCode());
+            producto.setFactor(item.getFactor());
             producto.setPrecioUnitarioVenta(item.getPrecioUnitarioVenta());
             producto.setPrecioUnitarioProveedor(item.getPrecioUnitarioProveedor());
             producto.setSemana(item.getSemana());

@@ -7,6 +7,7 @@ package com.interivalle.DTO;
 import com.interivalle.Modelo.enums.EstadoCotizacion;
 import com.interivalle.Modelo.enums.TipoCotizacion;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class CotizacionResponse {
 
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+    private LocalDate fechaInicio;
     private Boolean cronogramaGenerado;
     private Integer idCronograma;
 
@@ -129,6 +131,14 @@ public class CotizacionResponse {
 
     public void setFechaActualizacion(LocalDateTime fechaActualizacion) {
         this.fechaActualizacion = fechaActualizacion;
+    }
+
+    public LocalDate getFechaInicio() {
+        return fechaInicio;
+    }
+
+    public void setFechaInicio(LocalDate fechaInicio) {
+        this.fechaInicio = fechaInicio;
     }
 
     public Boolean getCronogramaGenerado() {

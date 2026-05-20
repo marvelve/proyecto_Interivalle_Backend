@@ -133,6 +133,15 @@ public class Cotizacion {
     public Usuario getAsignadaSupervisor() { return asignadaSupervisor; }
     public void setAsignadaSupervisor(Usuario asignadaSupervisor) { this.asignadaSupervisor = asignadaSupervisor; }
 
+    public void setFechaCreacion(LocalDateTime fechaCreacion) {
+        this.fechaCreacion = fechaCreacion;
+    }
+
+    public void setFechaActualizacion(LocalDateTime fechaActualizacion) {
+        this.fechaActualizacion = fechaActualizacion;
+    }
+
+    
     public LocalDateTime getFechaCreacion() { return fechaCreacion; }
     public LocalDateTime getFechaActualizacion() { return fechaActualizacion; }
 

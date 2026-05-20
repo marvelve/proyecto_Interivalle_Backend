@@ -22,6 +22,7 @@ public class CronogramaListResponse {
     private String estadoCronograma;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
+    private Integer totalSemanas;
     private Integer avanceGeneral;
 
     public Integer getId() {
@@ -86,6 +87,14 @@ public class CronogramaListResponse {
 
     public void setFechaFin(LocalDate fechaFin) {
         this.fechaFin = fechaFin;
+    }
+
+    public Integer getTotalSemanas() {
+        return totalSemanas;
+    }
+
+    public void setTotalSemanas(Integer totalSemanas) {
+        this.totalSemanas = totalSemanas;
     }
 
     public Integer getAvanceGeneral() {

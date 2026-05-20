@@ -58,7 +58,8 @@ public class SolicitudControler {
         return service.listarTodas();
     }
     
-     @PutMapping("/{idSolicitud}/reprogramar")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
+    @PutMapping("/{idSolicitud}/reprogramar")
     public ResponseEntity<SolicitudResponse> reprogramarVisita(
             @PathVariable Integer idSolicitud,
             @RequestBody ReprogramarVisitaRequest req,

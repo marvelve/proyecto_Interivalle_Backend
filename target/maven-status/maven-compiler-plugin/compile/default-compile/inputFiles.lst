@@ -9,6 +9,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CarpinteriaPersonalizadaControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CatalogoItemControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ClienteCotizacionControler.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CotizacionBaseV2Controler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CotizacionControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CotizacionPersonalizadaControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\CronogramaControler.java
@@ -93,6 +94,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\VidrioR
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\VidrioResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\Actividad.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\ActividadMaterial.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\ActividadMaterialV2.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\ActividadPersonalizada.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\AvanceSemanal.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\Carpinteria.java
@@ -132,6 +134,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\Usua
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\Vidrio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Modelo\VisitaTecnica.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Repositorio\ActividadMaterialRepositorio.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Repositorio\ActividadMaterialV2Repositorio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Repositorio\ActividadPersonalizadaRepositorio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Repositorio\ActividadRepositorio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Repositorio\AvanceSemanalRepositorio.java
@@ -173,6 +176,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\Av
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CarpinteriaPersonalizadaServicio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CarpinteriaService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CatalogoItemService.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionBaseV2Service.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionPersonalizadaService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CronogramaService.java

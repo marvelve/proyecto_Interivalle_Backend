@@ -384,10 +384,14 @@ public class CronogramaService {
             return;
         }
 
+        int totalSemanas = obtenerTotalSemanasCalculo(cronograma);
+        sincronizarTotalSemanasCronograma(cronograma, totalSemanas);
+
         List<AvanceSemanal> avances = avanceSemanalRepo
                 .findByCronograma_IdCronogramaOrderByNumeroSemanaAsc(cronograma.getIdCronograma());
 
         if (avances == null || avances.isEmpty()) {
+            cronogramaRepo.save(cronograma);
             return;
         }
 
@@ -420,15 +424,6 @@ public class CronogramaService {
             cronogramaDetalleRepo.saveAll(detallesSemana);
         }
 
-        Integer totalSemanas = cronograma.getTotalSemanas();
-        if (totalSemanas == null || totalSemanas <= 0) {
-            totalSemanas = avances.stream()
-                    .map(AvanceSemanal::getNumeroSemana)
-                    .filter(semana -> semana != null)
-                    .max(Integer::compareTo)
-                    .orElse(1);
-        }
-
         BigDecimal avanceGeneral = sumaSemanas.divide(
                 BigDecimal.valueOf(totalSemanas),
                 2,
@@ -448,6 +443,43 @@ public class CronogramaService {
         );
 
         cronogramaRepo.save(cronograma);
+    }
+
+    private int obtenerTotalSemanasCalculo(Cronograma cronograma) {
+        if (cronograma == null || cronograma.getIdCronograma() == null) {
+            return 1;
+        }
+
+        int totalDetalles = cronogramaDetalleRepo
+                .findByCronograma_IdCronogramaOrderBySemanaAsc(cronograma.getIdCronograma())
+                .stream()
+                .map(CronogramaDetalle::getSemana)
+                .filter(semana -> semana != null && semana > 0)
+                .max(Integer::compareTo)
+                .orElse(0);
+
+        if (totalDetalles > 0) {
+            return totalDetalles;
+        }
+
+        Integer totalSemanas = cronograma.getTotalSemanas();
+        return totalSemanas != null && totalSemanas > 0 ? totalSemanas : 1;
+    }
+
+    private void sincronizarTotalSemanasCronograma(Cronograma cronograma, int totalSemanas) {
+        if (cronograma == null || totalSemanas <= 0) {
+            return;
+        }
+
+        if (cronograma.getTotalSemanas() == null || cronograma.getTotalSemanas() != totalSemanas) {
+            cronograma.setTotalSemanas(totalSemanas);
+
+            if (cronograma.getFechaInicio() != null) {
+                cronograma.setFechaFinEstimada(
+                        cronograma.getFechaInicio().plusWeeks(totalSemanas - 1).plusDays(5)
+                );
+            }
+        }
     }
 
     private EstadoActividadCronograma estadoDetallePorPorcentaje(BigDecimal porcentaje) {
@@ -524,16 +556,16 @@ public class CronogramaService {
                     .orElse(0);
         }
 
-        int totalSemanas = Math.max(maxSemanaActividades, 0);
-        totalSemanas += semanasProductos(detallesCotizacion);
-        totalSemanas += contarActividadesAdicionales(cotizacion.getIdCotizacion());
-        if (totalSemanas <= 0) {
-            totalSemanas = 1;
+        int totalSemanasEstimado = Math.max(maxSemanaActividades, 0);
+        totalSemanasEstimado += semanasProductos(detallesCotizacion);
+        totalSemanasEstimado += contarActividadesAdicionales(cotizacion.getIdCotizacion());
+        if (totalSemanasEstimado <= 0) {
+            totalSemanasEstimado = 1;
         }
-        cronograma.setTotalSemanas(totalSemanas);
+        cronograma.setTotalSemanas(totalSemanasEstimado);
 
         cronograma.setFechaFinEstimada(
-                inicioPlanificado.plusWeeks(totalSemanas - 1).plusDays(5)
+                inicioPlanificado.plusWeeks(totalSemanasEstimado - 1).plusDays(5)
         );
 
         if (cronograma.getEstadoCronograma() == null) {
@@ -585,12 +617,20 @@ public class CronogramaService {
 
         int siguienteSemana = Math.max(maxSemanaActividades, 0);
         siguienteSemana = agregarSemanasProductos(guardado, detallesCotizacion, inicioPlanificado, siguienteSemana);
-        agregarActividadesAdicionales(guardado, cotizacion.getIdCotizacion(), inicioPlanificado, siguienteSemana);
+        siguienteSemana = agregarActividadesAdicionales(guardado, cotizacion.getIdCotizacion(), inicioPlanificado, siguienteSemana);
+
+        int totalSemanasReal = Math.max(siguienteSemana, 1);
+        guardado.setTotalSemanas(totalSemanasReal);
+        guardado.setFechaFinEstimada(
+                inicioPlanificado.plusWeeks(totalSemanasReal - 1).plusDays(5)
+        );
+        guardado = cronogramaRepo.save(guardado);
 
         CronogramaResponse response = new CronogramaResponse();
         response.setIdCronograma(guardado.getIdCronograma());
         response.setFechaInicio(guardado.getFechaInicio());
         response.setFechaFinEstimada(guardado.getFechaFinEstimada());
+        response.setTotalSemanas(guardado.getTotalSemanas());
         response.setEstadoCronograma(
                 guardado.getEstadoCronograma() != null
                         ? guardado.getEstadoCronograma().name()
@@ -905,8 +945,15 @@ public class CronogramaService {
                         : null
         );
 
+        int totalSemanasCalculo = obtenerTotalSemanasCalculo(cronograma);
+
         res.setFechaInicio(cronograma.getFechaInicio());
-        res.setFechaFin(cronograma.getFechaFinEstimada());
+        res.setFechaFin(
+                cronograma.getFechaInicio() != null
+                        ? cronograma.getFechaInicio().plusWeeks(totalSemanasCalculo - 1).plusDays(5)
+                        : cronograma.getFechaFinEstimada()
+        );
+        res.setTotalSemanas(totalSemanasCalculo);
 
         res.setAvanceGeneral(
                 cronograma.getAvanceGeneral() != null

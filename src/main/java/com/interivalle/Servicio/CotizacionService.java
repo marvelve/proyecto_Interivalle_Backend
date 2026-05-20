@@ -39,8 +39,10 @@ import com.interivalle.Modelo.Solicitud;
 import com.interivalle.Modelo.SolicitudServicios;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Modelo.enums.EstadoCotizacion;
+import com.interivalle.Modelo.enums.ModuloNotificacion;
 import com.interivalle.Modelo.enums.TipoCotizacion;
 import com.interivalle.Modelo.enums.TipoItemCotizacion;
+import com.interivalle.Modelo.enums.TipoNotificacion;
 import com.interivalle.Modelo.enums.TipoObservacion;
 import com.interivalle.Repositorio.ActividadMaterialRepositorio;
 import com.interivalle.Repositorio.CatalogoItemRepositorio;
@@ -85,7 +87,6 @@ public class CotizacionService {
     private static final int SERVICIO_CARPINTERIA = 2;
     private static final int SERVICIO_VIDRIO = 3;
     private static final int SERVICIO_MEZON = 4;
-    private static final BigDecimal PRECIO_MT_MARMOL = new BigDecimal("850000");
 
     private static class TotalesCotizacionBase {
         private BigDecimal manoObra = BigDecimal.ZERO;
@@ -111,6 +112,7 @@ public class CotizacionService {
     @Autowired private CotizacionMezonRepositorio cotizacionMezonRepo;
     @Autowired private CronogramaRepositorio cronogramaRepo;
     @Autowired private CronogramaService cronogramaServicio;
+    @Autowired private NotificacionService notificacionService;
 
     // CREA COTIZACION MANUAL
     @Transactional
@@ -192,6 +194,43 @@ public class CotizacionService {
     }
 
     // LISTA POR CLIENTE
+
+    private void notificarCotizacionAprobadaASupervisores(Cotizacion cotizacion) {
+        if (cotizacion == null) {
+            return;
+        }
+
+        Solicitud solicitud = cotizacion.getSolicitud();
+        Usuario cliente = solicitud != null ? solicitud.getUsuario() : cotizacion.getCreadaPor();
+
+        List<Usuario> supervisores = usuarioRepo.findByIdRol(2);
+        if (supervisores == null || supervisores.isEmpty()) {
+            return;
+        }
+
+        String nombreCliente = textoNotificacion(cliente != null ? cliente.getNombreUsuario() : null);
+        String nombreProyecto = textoNotificacion(
+                solicitud != null ? solicitud.getNombreProyectoUsuario() : null
+        );
+
+        String titulo = "Cotizacion aprobada";
+        String mensaje = "El cliente " + nombreCliente
+                + " aprobo la cotizacion #" + cotizacion.getIdCotizacion()
+                + " del proyecto '" + nombreProyecto + "'.";
+
+        notificacionService.crearNotificacionParaVarios(
+                supervisores,
+                TipoNotificacion.COTIZACION_APROBADA,
+                ModuloNotificacion.COTIZACION,
+                titulo,
+                mensaje,
+                cotizacion.getIdCotizacion()
+        );
+    }
+
+    private String textoNotificacion(String valor) {
+        return valor == null || valor.isBlank() ? "-" : valor.trim();
+    }
 
     public List<CotizacionResponse> listarPorCliente(Integer idUsuario) {
         List<Cotizacion> lista = cotizacionRepo.findBySolicitud_Usuario_IdUsuario(idUsuario);
@@ -284,6 +323,7 @@ public class CotizacionService {
         guardarObservacion(cot, usuario, TipoObservacion.APROBACION, req.getMensaje());
         guardarHistorial(cot, anterior, EstadoCotizacion.APROBADA, usuario);
 
+        notificarCotizacionAprobadaASupervisores(cot);
         cronogramaServicio.crearDesdeCotizacionAprobada(cot.getIdCotizacion(), req.getFechaInicio());
 
         return toResponseCompleto(cot);
@@ -1517,7 +1557,7 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
                 return BigDecimal.ZERO;
             }
 
-            return guardarDetalleProducto(cot, producto, cantidad, PRECIO_MT_MARMOL, descripcion);
+            return guardarDetalleProducto(cot, producto, cantidad, null, descripcion);
         }
 
         private CatalogoItem seleccionarProductoMezon(List<CatalogoItem> productos, String tipo) {
@@ -1866,6 +1906,7 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
             .orElse(null);
         r.setCronogramaGenerado(cronograma != null);
         r.setIdCronograma(cronograma != null ? cronograma.getIdCronograma() : null);
+        r.setFechaInicio(cronograma != null ? cronograma.getFechaInicio() : null);
 
         r.setDetalles(null);
         r.setSemanas(null);
@@ -1968,7 +2009,7 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
             s.setTotalManoObra(totalManoObra);
             s.setTotalMateriales(totalMateriales);
             s.setTotalProductos(totalProductos);
-            s.setTotalSemana(totalManoObra);
+            s.setTotalSemana(totalManoObra.add(totalMateriales).add(totalProductos));
 
             return s;
         })
@@ -2025,6 +2066,22 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         actividad.setMateriales(mats);
         resultado.add(actividad);
     }
+
+    items.stream()
+        .filter(i -> i.getTipoItem() == TipoItemCotizacion.PRODUCTO)
+        .forEach(producto -> {
+            ActividadAgrupadaResponse itemProducto = new ActividadAgrupadaResponse();
+            itemProducto.setActividad(
+                producto.getDescripcion() != null && !producto.getDescripcion().trim().isEmpty()
+                ? producto.getDescripcion()
+                : producto.getActividadMaterial()
+            );
+            itemProducto.setPrecioActividad(
+                producto.getSubtotalVenta() != null ? producto.getSubtotalVenta() : BigDecimal.ZERO
+            );
+            itemProducto.setMateriales(new ArrayList<>());
+            resultado.add(itemProducto);
+        });
 
     return resultado;
 }

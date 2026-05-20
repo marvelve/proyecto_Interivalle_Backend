@@ -37,6 +37,15 @@ public class Producto {
 
     @Column(name = "modo_precio", length = 30)
     private String modoPrecio;
+    
+    @Column(name = "formula_code", length = 80)
+    private String formula_code;
+
+    @Column(name = "variable_base", length = 80)
+    private String variable_base;
+
+    @Column(name = "factor", precision = 12, scale = 4)
+    private BigDecimal factor;
 
     @Column(name = "precio_unitario_venta", precision = 12, scale = 2)
     private BigDecimal precioUnitarioVenta;
@@ -58,6 +67,7 @@ public class Producto {
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
+    
 
     @PrePersist
     public void prePersist() {
@@ -146,6 +156,46 @@ public class Producto {
         this.modoPrecio = modoPrecio;
     }
 
+    public String getFormula_code() {
+        return formula_code;
+    }
+
+    public void setFormula_code(String formula_code) {
+        this.formula_code = formula_code;
+    }
+
+    public String getFormulaCode() {
+        return formula_code;
+    }
+
+    public void setFormulaCode(String formulaCode) {
+        this.formula_code = formulaCode;
+    }
+
+    public String getVariable_base() {
+        return variable_base;
+    }
+
+    public void setVariable_base(String variable_base) {
+        this.variable_base = variable_base;
+    }
+
+    public String getVariableBase() {
+        return variable_base;
+    }
+
+    public void setVariableBase(String variableBase) {
+        this.variable_base = variableBase;
+    }
+
+    public BigDecimal getFactor() {
+        return factor;
+    }
+
+    public void setFactor(BigDecimal factor) {
+        this.factor = factor;
+    } 
+    
     public BigDecimal getPrecioUnitarioVenta() {
         return precioUnitarioVenta;
     }

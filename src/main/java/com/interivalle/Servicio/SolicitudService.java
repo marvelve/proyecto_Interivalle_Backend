@@ -359,11 +359,18 @@ public class SolicitudService {
             );
         }
 
-        if (!"PENDIENTE".equalsIgnoreCase(solicitud.getEstado()) &&
-            !"REPROGRAMADA".equalsIgnoreCase(solicitud.getEstado())) {
+        Usuario usuarioAccion = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Integer rolAccion = usuarioAccion.getIdRol();
+        boolean esAdminOSupervisor = rolAccion != null && (rolAccion == 1 || rolAccion == 2);
+        boolean estadoPendiente = "PENDIENTE".equalsIgnoreCase(solicitud.getEstado());
+        boolean estadoReprogramada = "REPROGRAMADA".equalsIgnoreCase(solicitud.getEstado());
+
+        if (!estadoPendiente && !(esAdminOSupervisor && estadoReprogramada)) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Solo se pueden reprogramar visitas en estado PENDIENTE o REPROGRAMADA"
+                "El cliente solo puede reprogramar visitas pendientes; Admin o Supervisor pueden reprogramar visitas pendientes o reprogramadas"
             );
         }
 
@@ -396,8 +403,18 @@ public class SolicitudService {
             );
         }
 
-        Usuario usuarioAccion = usuarioRepo.findById(idUsuario)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        if (rolAccion != null && rolAccion == 3) {
+            Integer idClienteSolicitud = solicitud.getUsuario() != null
+                    ? solicitud.getUsuario().getIdUsuario()
+                    : null;
+
+            if (!usuarioAccion.getIdUsuario().equals(idClienteSolicitud)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "El cliente solo puede reprogramar sus propias visitas tecnicas"
+                );
+            }
+        }
 
         VisitaTecnica visita = visitaTecnicaRepo.findBySolicitud_IdSolicitud(idSolicitud)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Visita técnica no encontrada"));
@@ -433,12 +450,6 @@ public class SolicitudService {
         String fechaTexto = req.getFechaVisita().toString();
         String horaTexto = req.getHoraVisita().toString();
 
-        // ROLES:
-        // 1 = ADMIN
-        // 2 = SUPERVISOR
-        // 3 = CLIENTE
-        Integer rolAccion = usuarioAccion.getIdRol();
-
         if (rolAccion != null && rolAccion == 3) {
             // SI REPROGRAMA EL CLIENTE -> NOTIFICAR A SUPERVISORES
             List<Usuario> supervisores = usuarioRepo.findByIdRol(2);
@@ -463,9 +474,11 @@ public class SolicitudService {
             if (solicitud.getUsuario() != null) {
                 Usuario cliente = solicitud.getUsuario();
 
-                String titulo = "Visita técnica reprogramada";
-                String mensaje = "La visita técnica del proyecto '" + nombreProyecto
-                        + "' fue reprogramada para la fecha " + fechaTexto
+                String rolTexto = rolAccion == 1 ? "Admin" : "Supervisor";
+                String titulo = "Visita tecnica reprogramada por " + rolTexto;
+                String mensaje = "La visita tecnica del proyecto '" + nombreProyecto
+                        + "' fue reprogramada por " + rolTexto
+                        + " para la fecha " + fechaTexto
                         + " a las " + horaTexto + ".";
 
                 notificacionService.crearNotificacion(

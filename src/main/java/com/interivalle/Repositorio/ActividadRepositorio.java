@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 public interface ActividadRepositorio extends JpaRepository<Actividad, Integer> {
 
     Optional<Actividad> findByCodigo(String codigo);
+    
+    List<Actividad> findByServicio_IdServiciosAndActivoTrueOrderBySemanaAscOrdenAsc(Integer idServicio);
 
     Optional<Actividad> findByIdCatalogoItemOrigen(Integer idCatalogoItemOrigen);
 

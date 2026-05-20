@@ -5,6 +5,7 @@ com\interivalle\Modelo\ComentarioAvance.class
 com\interivalle\Repositorio\CarpinteriaRepositorio.class
 com\interivalle\Repositorio\MesonGranitoRepositorio.class
 com\interivalle\DTO\UsuarioUpdate.class
+com\interivalle\Servicio\CotizacionBaseV2Service.class
 com\interivalle\Modelo\enums\EstadoCronograma.class
 com\interivalle\Servicio\MaterialService.class
 com\interivalle\Modelo\enums\EstadoActividadCronograma.class
@@ -23,6 +24,7 @@ com\interivalle\DTO\CrearCotizacionRequest$DetalleItem.class
 com\interivalle\Servicio\CarpinteriaService.class
 com\interivalle\Servicio\VidrioService.class
 com\interivalle\Modelo\CotizacionVidrio.class
+com\interivalle\Modelo\ActividadMaterialV2.class
 com\interivalle\DTO\AprobarCotizacionRequest.class
 com\interivalle\DTO\LoginRequest.class
 com\interivalle\DTO\SemanaCronogramaDTO.class
@@ -33,6 +35,7 @@ com\interivalle\Repositorio\VisitaTecnicaRepositorio.class
 com\interivalle\Repositorio\CatalogoItemRepositorio.class
 com\interivalle\Repositorio\CotizacionHistorialRepositorio.class
 com\interivalle\Repositorio\CotizacionVidrioRepositorio.class
+com\interivalle\Repositorio\ActividadMaterialV2Repositorio.class
 com\interivalle\DTO\CatalogoItemResponse.class
 com\interivalle\DTO\CotizacionPersonalizadaResponse.class
 com\interivalle\Modelo\CarpinteriaPersonalizada.class
@@ -67,6 +70,7 @@ com\interivalle\DTO\MesonGranitoResponse.class
 com\interivalle\DTO\VidrioBaseRequest.class
 com\interivalle\Servicio\CotizacionPersonalizadaService.class
 com\interivalle\DTO\CrearCatalogoItemRequest.class
+com\interivalle\Controlador\CotizacionBaseV2Controler.class
 com\interivalle\DTO\CrearCotizacionRequest.class
 com\interivalle\Repositorio\SolicitudRepositorio.class
 com\interivalle\Repositorio\ServiciosRepositorio.class
@@ -106,6 +110,7 @@ com\interivalle\Modelo\CotizacionPersonalizada.class
 com\interivalle\Modelo\Cotizacion.class
 com\interivalle\Modelo\AvanceSemanal.class
 com\interivalle\DTO\CarpinteriaPersonalizadaRequest.class
+com\interivalle\DTO\FechaInicioDisponibleResponse.class
 com\interivalle\DTO\ObservacionRequest.class
 com\interivalle\Repositorio\CronogramaRepositorio.class
 com\interivalle\DTO\CotizacionDetalleResponse.class

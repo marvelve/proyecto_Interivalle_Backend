@@ -43,6 +43,17 @@ public class AvanceSemanalControler {
         return avanceService.registrarAvance(req, idUsuario);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PutMapping("/{idAvance}")
+    public AvanceSemanalResponse actualizar(
+            @PathVariable Integer idAvance,
+            @RequestBody AvanceSemanalRequest req,
+            Authentication auth
+    ) {
+        Integer idUsuario = obtenerIdUsuario(auth);
+        return avanceService.actualizarAvance(idAvance, req, idUsuario);
+    }
+
    @GetMapping("/cronograma/{idCronograma}")
     public List<AvanceSemanalResponse> listarPorCronograma(@PathVariable Integer idCronograma) {
         return avanceService.listarPorCronograma(idCronograma);

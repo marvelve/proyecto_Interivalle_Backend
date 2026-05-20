@@ -18,4 +18,9 @@ public interface AvanceSemanalRepositorio extends JpaRepository<AvanceSemanal, I
 
     Optional<AvanceSemanal> findByCronograma_IdCronogramaAndNumeroSemana(Integer idCronograma, Integer numeroSemana);
 
+    List<AvanceSemanal> findByCronograma_IdCronogramaAndNumeroSemanaOrderByIdAvanceAsc(
+            Integer idCronograma,
+            Integer numeroSemana
+    );
+
 }
