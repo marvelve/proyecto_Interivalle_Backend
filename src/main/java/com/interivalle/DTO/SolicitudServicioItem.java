@@ -1,29 +1,42 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
-/**
- *
- * @author mary_
- */
-
 public class SolicitudServicioItem {
-    private Integer idSolicitudServicio; // id del detalle (tabla puente)
-    private Integer idServicio;          // id del servicio (1,2,3,4)
-    private String nombreServicio;       // nombre
-    private String estado;               // PENDIENTE / GENERADO
 
-    public Integer getIdSolicitudServicio() { return idSolicitudServicio; }
-    public void setIdSolicitudServicio(Integer idSolicitudServicio) { this.idSolicitudServicio = idSolicitudServicio; }
+    // DTO del detalle de servicios seleccionados para una solicitud.
+    private Integer idSolicitudServicio;
+    private Integer idServicio;
+    private String nombreServicio;
+    private String estado;
 
-    public Integer getIdServicio() { return idServicio; }
-    public void setIdServicio(Integer idServicio) { this.idServicio = idServicio; }
+    public Integer getIdSolicitudServicio() {
+        return idSolicitudServicio;
+    }
 
-    public String getNombreServicio() { return nombreServicio; }
-    public void setNombreServicio(String nombreServicio) { this.nombreServicio = nombreServicio; }
+    public void setIdSolicitudServicio(Integer idSolicitudServicio) {
+        this.idSolicitudServicio = idSolicitudServicio;
+    }
 
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
+    public Integer getIdServicio() {
+        return idServicio;
+    }
+
+    public void setIdServicio(Integer idServicio) {
+        this.idServicio = idServicio;
+    }
+
+    public String getNombreServicio() {
+        return nombreServicio;
+    }
+
+    public void setNombreServicio(String nombreServicio) {
+        this.nombreServicio = nombreServicio;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
 }

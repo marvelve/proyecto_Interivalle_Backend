@@ -1,20 +1,11 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-/**
- *
- * @author mary_
- */
-
 public class MezonBaseRequest {
 
-     @NotNull(message = "Debe indicar si desea mesón de cocina")
+    @NotNull(message = "Debe indicar si desea mesón de cocina")
     private Boolean mezonCocina;
 
     @NotNull(message = "Debe indicar si desea mesón barra")

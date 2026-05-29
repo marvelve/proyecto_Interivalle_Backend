@@ -1,18 +1,11 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-/**
- *
- * @author mary_
- */
 public class ManoObraBaseRequest {
 
     @NotNull(message = "La medida del área privada es obligatoria")
@@ -20,7 +13,8 @@ public class ManoObraBaseRequest {
     private Double medidaAreaPrivada;
 
     @NotNull(message = "La cantidad de baños es obligatoria")
-    @Min(value = 1, message = "La cantidad de baños debe ser mayor a 0")
+    @Min(value = 0, message = "La cantidad de baños no puede ser negativa")
+    @Max(value = 2, message = "La cantidad de baños solo puede ser 0, 1 o 2")
     private Integer cantidadBanos;
 
     @NotBlank(message = "El tipo de cielo es obligatorio")
@@ -28,7 +22,8 @@ public class ManoObraBaseRequest {
 
     @NotNull(message = "Debe indicar si tiene división en pared")
     private Boolean divisionPared;
-    
+
+    // Se conservan estos nombres porque ya son usados por el flujo de cotizacion.
     private BigDecimal MetrosCuadradosPanelYeso;
     private Integer CantidadPoyos;
     private Integer CantidadPuntosElectricos;
@@ -115,7 +110,4 @@ public class ManoObraBaseRequest {
     public void setMetrosCuadradosTaparTuberias(BigDecimal MetrosCuadradosTaparTuberias) {
         this.MetrosCuadradosTaparTuberias = MetrosCuadradosTaparTuberias;
     }
-    
-    
 }
-

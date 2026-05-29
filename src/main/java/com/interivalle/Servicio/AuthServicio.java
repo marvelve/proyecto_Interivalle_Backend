@@ -1,26 +1,19 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Servicio;
 
-import com.interivalle.DTO.*;
+import com.interivalle.DTO.AuthResponse;
+import com.interivalle.DTO.LoginRequest;
+import com.interivalle.DTO.RegisterRequest;
 import com.interivalle.Modelo.Usuario;
-import com.interivalle.Repositorio.*;
+import com.interivalle.Repositorio.UsuarioRepositorio;
 import com.interivalle.Security.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
-/**
- *
- * @author mary_
- */
 @Service
 public class AuthServicio {
-    
 
     @Autowired
     private UsuarioRepositorio usuarioRepo;
@@ -32,33 +25,42 @@ public class AuthServicio {
     private JwtService jwtService;
 
     public void register(RegisterRequest dto) {
-
+        // Valida que el correo no exista antes de crear el usuario.
         if (usuarioRepo.existsByCorreoUsuario(dto.getCorreoUsuario())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo ya está registrado");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El correo ya esta registrado");
         }
 
-        Usuario u = new Usuario();
-        u.setNombreUsuario(dto.getNombreUsuario());
-        u.setCorreoUsuario(dto.getCorreoUsuario());
-        u.setContrasenaUsuario(passwordEncoder.encode(dto.getContrasenaUsuario()));
-        u.setCelularUsuario(dto.getCelularUsuario());
-        u.setCiudadUsuario(dto.getCiudadUsuario());
+        // Crea el usuario con la contrasena encriptada.
+        Usuario usuario = new Usuario();
+        usuario.setNombreUsuario(dto.getNombreUsuario());
+        usuario.setCorreoUsuario(dto.getCorreoUsuario());
+        usuario.setContrasenaUsuario(passwordEncoder.encode(dto.getContrasenaUsuario()));
+        usuario.setCelularUsuario(dto.getCelularUsuario());
+        usuario.setCiudadUsuario(dto.getCiudadUsuario());
 
-        usuarioRepo.save(u);
+        // Se guarda con el rol por defecto definido en la entidad Usuario.
+        usuarioRepo.save(usuario);
     }
 
     public AuthResponse login(LoginRequest dto) {
+        // Busca el usuario por correo para validar sus credenciales.
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(dto.getCorreoUsuario())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Correo o contrasena invalidos"
+                ));
 
-        Usuario u = usuarioRepo.findByCorreoUsuario(dto.getCorreoUsuario())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contraseña inválidos"));
+        boolean contrasenaValida = passwordEncoder.matches(
+                dto.getContrasenaUsuario(),
+                usuario.getContrasenaUsuario()
+        );
 
-        boolean ok = passwordEncoder.matches(dto.getContrasenaUsuario(), u.getContrasenaUsuario());
-        if (!ok) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contraseña inválidos");
+        if (!contrasenaValida) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contrasena invalidos");
         }
 
-        String token = jwtService.generarToken(u.getCorreoUsuario(), u.getIdRol());
-        return new AuthResponse(token, u.getCorreoUsuario(), u.getIdRol());
+        // Genera el token que despues consume Spring Security en las rutas protegidas.
+        String token = jwtService.generarToken(usuario.getCorreoUsuario(), usuario.getIdRol());
+        return new AuthResponse(token, usuario.getCorreoUsuario(), usuario.getIdRol());
     }
 }
-

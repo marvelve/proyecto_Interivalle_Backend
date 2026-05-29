@@ -1,13 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
-
-/**
- *
- * @author mary_
- */
 
 public class CotizacionBaseResponse {
 
@@ -15,6 +6,7 @@ public class CotizacionBaseResponse {
     private Integer idCotizacion;
     private String mensaje;
 
+    // Indica que seccion del formulario fue procesada por el backend.
     private boolean manoObraProcesada;
     private boolean carpinteriaProcesada;
     private boolean vidrioProcesado;

@@ -28,6 +28,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // Encripta contrasenas antes de guardarlas en la base de datos.
         return new BCryptPasswordEncoder();
     }
 
@@ -38,21 +39,24 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/", "/*.html", "/js/**", "/css/**", "/favicon.ico").permitAll()
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/error", "/error/**").permitAll()
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Permite preflight de CORS.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Registro y login deben quedar publicos.
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/", "/*.html", "/js/**", "/css/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/error", "/error/**").permitAll()
+                        // Solo ADMIN puede acceder al modulo administrativo.
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                        .anyRequest().authenticated()
+                )
+                // El filtro JWT valida las peticiones protegidas.
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

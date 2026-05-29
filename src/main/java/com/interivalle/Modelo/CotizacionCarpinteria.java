@@ -29,6 +29,9 @@ public class CotizacionCarpinteria {
     @Column(name = "cantidad_closet", nullable = false)
     private Integer cantidadCloset;
 
+    @Column(name = "vestier_basico")
+    private Boolean vestierBasico = false;
+
     @Column(name = "cantidad_puertas", nullable = false)
     private Integer cantidadPuertas;
 
@@ -72,6 +75,14 @@ public class CotizacionCarpinteria {
 
     public void setCantidadCloset(Integer cantidadCloset) {
         this.cantidadCloset = cantidadCloset;
+    }
+
+    public Boolean getVestierBasico() {
+        return vestierBasico;
+    }
+
+    public void setVestierBasico(Boolean vestierBasico) {
+        this.vestierBasico = vestierBasico;
     }
 
     public Integer getCantidadPuertas() {

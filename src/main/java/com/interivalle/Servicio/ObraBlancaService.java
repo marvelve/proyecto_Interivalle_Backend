@@ -24,64 +24,32 @@ public class ObraBlancaService {
     @Autowired
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
-    // GUARDAR
     public ObraBlancaResponse guardar(ObraBlancaRequest req) {
-        if (req.getIdCotizacion() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idCotizacion es obligatorio");
-        }
+        validarDatosBasicos(req);
 
-        if (req.getIdActividad() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idActividad es obligatorio");
-        }
-
-        if (req.getLugar() == null || req.getLugar().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lugar es obligatorio");
-        }
-
+        // La obra blanca se guarda buscando la cabecera por el id de la cotizacion base.
         CotizacionPersonalizada cotizacion = cotizacionRepo
-         .findByCotizacion_IdCotizacion(req.getIdCotizacion())
-         .orElseThrow(() -> new ResponseStatusException(
-                 HttpStatus.NOT_FOUND,
-                 "Cotización personalizada no encontrada para la cotización base: " + req.getIdCotizacion()
-         ));
+                .findByCotizacion_IdCotizacion(req.getIdCotizacion())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Cotizacion personalizada no encontrada para la cotizacion base: " + req.getIdCotizacion()
+                ));
 
         validarCotizacionEditable(cotizacion);
 
         String lugarNormalizado = normalizarLugar(req.getLugar());
-
-        boolean existe = obraBlancaRepo
-                .existsByCotizacionPersonalizada_Cotizacion_IdCotizacionAndIdActividadAndLugarIgnoreCase(
-                        req.getIdCotizacion(),
-                        req.getIdActividad(),
-                        lugarNormalizado
-                );
-
-        if (existe) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Esta actividad ya está en la cotización para ese mismo lugar"
-            );
-        }
+        validarActividadRepetida(req.getIdCotizacion(), req.getIdActividad(), lugarNormalizado);
 
         ObraBlanca item = new ObraBlanca();
         item.setCotizacionPersonalizada(cotizacion);
-        item.setIdActividad(req.getIdActividad());
-        item.setActividad(req.getActividad());
-        item.setLugar(lugarNormalizado);
-        item.setUnidad(req.getUnidad());
-        item.setCantidad(req.getCantidad());
-        item.setSemanas(req.getSemanas());
-        item.setPrecioUnitario(req.getPrecioUnitario());
-        item.setMedida(req.getMedida());
-        item.setDescripcion(req.getDescripcion());
-        item.setSubtotal(calcularSubtotal(req));
+        cargarDatosItem(item, req, lugarNormalizado);
 
         ObraBlanca guardado = obraBlancaRepo.save(item);
         return toResponse(guardado);
     }
 
-    // LISTAR POR COTIZACION BASE
     public List<ObraBlancaResponse> listarPorCotizacion(Integer idCotizacion) {
+        // Lista adicionales de Obra Blanca asociados a la cotizacion base.
         return obraBlancaRepo
                 .findByCotizacionPersonalizada_Cotizacion_IdCotizacionOrderByIdObraBlancaAsc(idCotizacion)
                 .stream()
@@ -89,7 +57,6 @@ public class ObraBlancaService {
                 .collect(Collectors.toList());
     }
 
-    // OBTENER POR ID
     public ObraBlancaResponse obtenerPorId(Integer id) {
         ObraBlanca item = obraBlancaRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -100,7 +67,6 @@ public class ObraBlancaService {
         return toResponse(item);
     }
 
-    // ACTUALIZAR
     public ObraBlancaResponse actualizar(Integer id, ObraBlancaRequest req) {
         ObraBlanca item = obraBlancaRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -108,32 +74,69 @@ public class ObraBlancaService {
                         "Item de obra blanca no encontrado"
                 ));
 
+        Integer idCotizacionBase = asignarCotizacionSiLlegaEnRequest(item, req);
+        validarCotizacionEditable(item.getCotizacionPersonalizada());
+        validarDatosBasicosParaActualizar(req);
+
+        String lugarNormalizado = normalizarLugar(req.getLugar());
+        validarActividadRepetidaAlActualizar(id, idCotizacionBase, req.getIdActividad(), lugarNormalizado);
+
+        cargarDatosItem(item, req, lugarNormalizado);
+
+        ObraBlanca actualizado = obraBlancaRepo.save(item);
+        return toResponse(actualizado);
+    }
+
+    public void eliminar(Integer id) {
+        ObraBlanca item = obraBlancaRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de obra blanca no encontrado"
+                ));
+
+        validarCotizacionEditable(item.getCotizacionPersonalizada());
+        obraBlancaRepo.delete(item);
+    }
+
+    private Integer asignarCotizacionSiLlegaEnRequest(ObraBlanca item, ObraBlancaRequest req) {
         Integer idCotizacionBase = null;
 
         if (req.getIdCotizacionPersonalizada() != null) {
             CotizacionPersonalizada cotizacion = cotizacionRepo.findById(req.getIdCotizacionPersonalizada())
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
-                            "Cotización personalizada no encontrada"
+                            "Cotizacion personalizada no encontrada"
                     ));
+
             item.setCotizacionPersonalizada(cotizacion);
             idCotizacionBase = cotizacion.getCotizacion().getIdCotizacion();
-
         } else if (req.getIdCotizacion() != null) {
             CotizacionPersonalizada cotizacion = cotizacionRepo
-                .findByCotizacion_IdCotizacion(req.getIdCotizacion())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Cotización personalizada no encontrada para la cotización base: " + req.getIdCotizacion()
-                ));
+                    .findByCotizacion_IdCotizacion(req.getIdCotizacion())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Cotizacion personalizada no encontrada para la cotizacion base: " + req.getIdCotizacion()
+                    ));
+
             item.setCotizacionPersonalizada(cotizacion);
             idCotizacionBase = req.getIdCotizacion();
-
         } else if (item.getCotizacionPersonalizada() != null
                 && item.getCotizacionPersonalizada().getCotizacion() != null) {
             idCotizacionBase = item.getCotizacionPersonalizada().getCotizacion().getIdCotizacion();
         }
 
+        return idCotizacionBase;
+    }
+
+    private void validarDatosBasicos(ObraBlancaRequest req) {
+        if (req.getIdCotizacion() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idCotizacion es obligatorio");
+        }
+
+        validarDatosBasicosParaActualizar(req);
+    }
+
+    private void validarDatosBasicosParaActualizar(ObraBlancaRequest req) {
         if (req.getIdActividad() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idActividad es obligatorio");
         }
@@ -141,24 +144,47 @@ public class ObraBlancaService {
         if (req.getLugar() == null || req.getLugar().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lugar es obligatorio");
         }
+    }
 
-        String lugarNormalizado = normalizarLugar(req.getLugar());
+    private void validarActividadRepetida(Integer idCotizacion, Integer idActividad, String lugarNormalizado) {
+        boolean existe = obraBlancaRepo
+                .existsByCotizacionPersonalizada_Cotizacion_IdCotizacionAndIdActividadAndLugarIgnoreCase(
+                        idCotizacion,
+                        idActividad,
+                        lugarNormalizado
+                );
 
+        if (existe) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Esta actividad ya esta en la cotizacion para ese mismo lugar"
+            );
+        }
+    }
+
+    private void validarActividadRepetidaAlActualizar(
+            Integer idActual,
+            Integer idCotizacionBase,
+            Integer idActividad,
+            String lugarNormalizado
+    ) {
         ObraBlanca existente = obraBlancaRepo
                 .findByCotizacionPersonalizada_Cotizacion_IdCotizacionAndIdActividadAndLugarIgnoreCase(
                         idCotizacionBase,
-                        req.getIdActividad(),
+                        idActividad,
                         lugarNormalizado
                 )
                 .orElse(null);
 
-        if (existente != null && !existente.getIdObraBlanca().equals(id)) {
+        if (existente != null && !existente.getIdObraBlanca().equals(idActual)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Esta actividad ya está en la cotización para ese mismo lugar"
+                    "Esta actividad ya esta en la cotizacion para ese mismo lugar"
             );
         }
+    }
 
+    private void cargarDatosItem(ObraBlanca item, ObraBlancaRequest req, String lugarNormalizado) {
         item.setIdActividad(req.getIdActividad());
         item.setActividad(req.getActividad());
         item.setLugar(lugarNormalizado);
@@ -169,62 +195,44 @@ public class ObraBlancaService {
         item.setMedida(req.getMedida());
         item.setDescripcion(req.getDescripcion());
         item.setSubtotal(calcularSubtotal(req));
-
-        ObraBlanca actualizado = obraBlancaRepo.save(item);
-        return toResponse(actualizado);
     }
 
-    // ELIMINAR
-    public void eliminar(Integer id) {
-        ObraBlanca item = obraBlancaRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Item de obra blanca no encontrado"
-                ));
-        validarCotizacionEditable(item.getCotizacionPersonalizada());
+    private ObraBlancaResponse toResponse(ObraBlanca item) {
+        ObraBlancaResponse resp = new ObraBlancaResponse();
+        resp.setIdObraBlanca(item.getIdObraBlanca());
+        resp.setIdActividad(item.getIdActividad());
+        resp.setActividad(item.getActividad());
+        resp.setLugar(item.getLugar());
+        resp.setUnidad(item.getUnidad());
+        resp.setTipoCobro(item.getUnidad());
+        resp.setCantidad(item.getCantidad());
+        resp.setSemanas(item.getSemanas());
+        resp.setPrecioUnitario(item.getPrecioUnitario());
+        resp.setMedida(item.getMedida());
+        resp.setSubtotal(item.getSubtotal());
+        resp.setDescripcion(item.getDescripcion());
 
-        obraBlancaRepo.delete(item);
-    }
-
-    // MAPPER ENTITY -> RESPONSE
-private ObraBlancaResponse toResponse(ObraBlanca item) {
-    ObraBlancaResponse resp = new ObraBlancaResponse();
-
-    resp.setIdObraBlanca(item.getIdObraBlanca());
-    resp.setIdActividad(item.getIdActividad());
-    resp.setActividad(item.getActividad());
-    resp.setLugar(item.getLugar());
-    resp.setUnidad(item.getUnidad());
-    resp.setTipoCobro(item.getUnidad()); // <-- agregar esto
-    resp.setCantidad(item.getCantidad());
-    resp.setSemanas(item.getSemanas());
-    resp.setPrecioUnitario(item.getPrecioUnitario());
-    resp.setMedida(item.getMedida());
-    resp.setSubtotal(item.getSubtotal());
-    resp.setDescripcion(item.getDescripcion());
-
-    if (item.getCotizacionPersonalizada() != null) {
-        resp.setIdCotizacionPersonalizada(
-                item.getCotizacionPersonalizada().getIdCotizacionPersonalizada()
-        );
-
-        if (item.getCotizacionPersonalizada().getCotizacion() != null) {
-            resp.setIdCotizacion(
-                    item.getCotizacionPersonalizada().getCotizacion().getIdCotizacion()
+        if (item.getCotizacionPersonalizada() != null) {
+            resp.setIdCotizacionPersonalizada(
+                    item.getCotizacionPersonalizada().getIdCotizacionPersonalizada()
             );
+
+            if (item.getCotizacionPersonalizada().getCotizacion() != null) {
+                resp.setIdCotizacion(
+                        item.getCotizacionPersonalizada().getCotizacion().getIdCotizacion()
+                );
+            }
         }
+
+        return resp;
     }
 
-    return resp;
-}
+    private String normalizarLugar(String lugar) {
+        return lugar == null ? "" : lugar.trim().replaceAll("\\s+", " ").toUpperCase();
+    }
 
-    // NORMALIZAR LUGAR
-   private String normalizarLugar(String lugar) {
-    return lugar == null ? "" : lugar.trim().replaceAll("\\s+", " ").toUpperCase();
-}
-
-    // CALCULAR SUBTOTAL
     private BigDecimal calcularSubtotal(ObraBlancaRequest req) {
+        // El subtotal depende del tipo de dato enviado: medida o cantidad.
         if (req.getPrecioUnitario() == null || req.getPrecioUnitario().compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
@@ -246,14 +254,14 @@ private ObraBlancaResponse toResponse(ObraBlanca item) {
 
     private void validarCotizacionEditable(CotizacionPersonalizada cotizacion) {
         if (cotizacion == null || cotizacion.getCotizacion() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n personalizada no encontrada");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotizacion personalizada no encontrada");
         }
 
         EstadoCotizacion estado = cotizacion.getCotizacion().getEstado();
         if (estado == EstadoCotizacion.APROBADA || estado == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "La cotizaciÃ³n no se puede modificar porque estÃ¡ en estado " + estado.name()
+                    "La cotizacion no se puede modificar porque esta en estado " + estado.name()
             );
         }
     }

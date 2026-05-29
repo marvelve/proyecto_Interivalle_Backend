@@ -1,23 +1,17 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-/**
- *
- * @author mary_
- */
 
 public class CrearSolicitud {
 
     private String correoUsuario;
     private String tipoSolicitud; // COTIZACION_BASE | VISITA_TECNICA
     private String nombreProyecto;
-    private List<Integer> servicios; // IDs de servicios
+    private List<Integer> servicios; // IDs de servicios para cotizacion base.
+
+    // Datos usados solo cuando tipoSolicitud es VISITA_TECNICA.
     private LocalDate fechaVisita;
     private LocalTime horaVisita;
     private String direccionVisita;
@@ -86,7 +80,4 @@ public class CrearSolicitud {
     public void setCelularCliente(String celularCliente) {
         this.celularCliente = celularCliente;
     }
-    
-    
 }
-

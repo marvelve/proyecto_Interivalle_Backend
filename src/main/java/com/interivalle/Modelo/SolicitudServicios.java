@@ -1,54 +1,60 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Modelo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
-/**
- *
- * @author mary_
- */
 @Entity
 @Table(
-    name = "solicitud_servicios",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"id_solicitud", "id_servicios"})
+        name = "solicitud_servicios",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"id_solicitud", "id_servicios"})
 )
 public class SolicitudServicios {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer idSolicitudServicio;
+
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "id_solicitud", nullable = false)
     private Solicitud solicitud;
+
     @ManyToOne
     @JoinColumn(name = "id_servicios", nullable = false)
     private Servicios servicios;
-    // "GENERADO" | "PENDIENTE" | etc
+
+    // Estado del servicio dentro de la solicitud.
     @Column(name = "estado")
     private String estado;
-    
-    // ---------- getters & setters ----------
+
     public Integer getIdSolicitudServicio() {
         return idSolicitudServicio;
     }
+
     public void setIdSolicitudServicio(Integer idSolicitudServicio) {
         this.idSolicitudServicio = idSolicitudServicio;
     }
-    
+
     public Solicitud getSolicitud() {
         return solicitud;
     }
+
     public void setSolicitud(Solicitud solicitud) {
         this.solicitud = solicitud;
-    }  
-    
+    }
+
     public Servicios getServicios() {
         return servicios;
     }
+
     public void setServicios(Servicios servicios) {
         this.servicios = servicios;
     }
@@ -56,8 +62,8 @@ public class SolicitudServicios {
     public String getEstado() {
         return estado;
     }
+
     public void setEstado(String estado) {
         this.estado = estado;
     }
 }
-

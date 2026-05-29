@@ -1,16 +1,8 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
-
-/**
- *
- * @author mary_
- */
 
 public class AuthResponse {
 
+    // Respuesta que recibe el frontend despues del login.
     private String token;
     private String tipo = "Bearer";
     private String correoUsuario;
@@ -22,9 +14,19 @@ public class AuthResponse {
         this.idRol = idRol;
     }
 
-    public String getToken() { return token; }
-    public String getTipo() { return tipo; }
-    public String getCorreoUsuario() { return correoUsuario; }
-    public Integer getIdRol() { return idRol; }
-}
+    public String getToken() {
+        return token;
+    }
 
+    public String getTipo() {
+        return tipo;
+    }
+
+    public String getCorreoUsuario() {
+        return correoUsuario;
+    }
+
+    public Integer getIdRol() {
+        return idRol;
+    }
+}

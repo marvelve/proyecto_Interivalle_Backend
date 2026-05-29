@@ -1,18 +1,18 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Modelo;
 
-import com.interivalle.DTO.SolicitudServicioItem;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-/**
- *
- * @author mary_
- */
 
 @Entity
 @Table(name = "solicitud")
@@ -21,6 +21,7 @@ public class Solicitud {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer idSolicitud;
+
     @ManyToOne
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
@@ -31,25 +32,16 @@ public class Solicitud {
     @Column(name = "fecha_solicitud")
     private LocalDate fechaSolicitud;
 
-    // "COTIZACION_BASE" | "VISITA_TECNICA"
+    // Valores usados actualmente: COTIZACION_BASE | VISITA_TECNICA.
     @Column(name = "tipo_solicitud", nullable = false)
     private String tipoSolicitud;
 
-    // "PENDIENTE" | "GENERADA"
+    // Estados principales: PENDIENTE, GENERADA, REPROGRAMADA, CONFIRMADA, REALIZADA.
     @Column(name = "estado", nullable = false)
     private String estado;
 
     @OneToMany(mappedBy = "solicitud", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolicitudServicios> serviciosSeleccionados = new ArrayList<>();
-
-    // ---------- getters & setters ----------
-    
-      public List<SolicitudServicios> getServiciosSeleccionados() {
-        return serviciosSeleccionados;
-    }
-    public void setServiciosSeleccionados(List<SolicitudServicios> serviciosSeleccionados) {
-        this.serviciosSeleccionados = serviciosSeleccionados;
-    }
 
     public Integer getIdSolicitud() {
         return idSolicitud;
@@ -99,6 +91,11 @@ public class Solicitud {
         this.estado = estado;
     }
 
-    
-}
+    public List<SolicitudServicios> getServiciosSeleccionados() {
+        return serviciosSeleccionados;
+    }
 
+    public void setServiciosSeleccionados(List<SolicitudServicios> serviciosSeleccionados) {
+        this.serviciosSeleccionados = serviciosSeleccionados;
+    }
+}

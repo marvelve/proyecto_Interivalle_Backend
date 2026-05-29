@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Servicio;
 
 import com.interivalle.DTO.MesonGranitoRequest;
@@ -17,11 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/**
- *
- * @author mary_
- */
-
 @Service
 public class MesonGranitoService {
 
@@ -32,24 +23,12 @@ public class MesonGranitoService {
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
     public MesonGranito guardar(MesonGranitoRequest req) {
-        CotizacionPersonalizada cotizacion = cotizacionRepo.findById(req.getIdCotizacion())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada"));
-
+        CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
         validarCotizacionEditable(cotizacion);
 
         MesonGranito item = new MesonGranito();
         item.setCotizacionPersonalizada(cotizacion);
-        item.setCotizacion(cotizacion);
-        validarCotizacionEditable(item.getCotizacionPersonalizada());
-
-        item.setTipoGranito(req.getTipoGranito());
-        item.setLargo(req.getLargo());
-        item.setAncho(req.getAncho());
-        item.setEspesor(req.getEspesor());
-        item.setCantidad(req.getCantidad());
-        item.setPrecioUnitario(req.getPrecioUnitario());
-        item.setDescripcion(req.getDescripcion());
-        item.setSubtotal(calcularSubtotal(req));
+        cargarDatosItem(item, req);
 
         return mesonRepo.save(item);
     }
@@ -60,24 +39,51 @@ public class MesonGranitoService {
 
     public MesonGranito obtenerPorId(Integer id) {
         return mesonRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item de mesÃ³n no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de meson no encontrado"
+                ));
     }
 
     public MesonGranito actualizar(Integer id, MesonGranitoRequest req) {
         MesonGranito item = mesonRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item de mesÃ³n no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de meson no encontrado"
+                ));
 
         if (req.getIdCotizacion() != null) {
-            CotizacionPersonalizada cotizacion = cotizacionRepo.findById(req.getIdCotizacion())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada"));
+            CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
             item.setCotizacionPersonalizada(cotizacion);
-            item.setCotizacion(cotizacion);
-        validarCotizacionEditable(item.getCotizacionPersonalizada());
-
         }
 
         validarCotizacionEditable(item.getCotizacionPersonalizada());
+        cargarDatosItem(item, req);
 
+        return mesonRepo.save(item);
+    }
+
+    public void eliminar(Integer id) {
+        MesonGranito item = mesonRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de meson no encontrado"
+                ));
+
+        validarCotizacionEditable(item.getCotizacionPersonalizada());
+        mesonRepo.delete(item);
+    }
+
+    private CotizacionPersonalizada buscarCotizacionPersonalizada(Integer idCotizacionPersonalizada) {
+        // Meson recibe el id de cotizacion personalizada desde el formulario.
+        return cotizacionRepo.findById(idCotizacionPersonalizada)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Cotizacion no encontrada"
+                ));
+    }
+
+    private void cargarDatosItem(MesonGranito item, MesonGranitoRequest req) {
         item.setTipoGranito(req.getTipoGranito());
         item.setLargo(req.getLargo());
         item.setAncho(req.getAncho());
@@ -86,29 +92,18 @@ public class MesonGranitoService {
         item.setPrecioUnitario(req.getPrecioUnitario());
         item.setDescripcion(req.getDescripcion());
         item.setSubtotal(calcularSubtotal(req));
-
-        return mesonRepo.save(item);
-    }
-
-    public void eliminar(Integer id) {
-        MesonGranito item = mesonRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item de mesÃ³n no encontrado"));
-
-        validarCotizacionEditable(item.getCotizacionPersonalizada());
-
-        mesonRepo.delete(item);
     }
 
     private BigDecimal calcularSubtotal(MesonGranitoRequest req) {
+        // Calcula por area si llegan largo y ancho; si no, toma el precio unitario.
         if (req.getPrecioUnitario() == null || req.getPrecioUnitario().compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
 
-        BigDecimal subtotalBase = BigDecimal.ZERO;
+        BigDecimal subtotalBase;
 
         if (req.getLargo() != null && req.getLargo().compareTo(BigDecimal.ZERO) > 0
                 && req.getAncho() != null && req.getAncho().compareTo(BigDecimal.ZERO) > 0) {
-
             BigDecimal area = req.getLargo().multiply(req.getAncho());
             subtotalBase = area.multiply(req.getPrecioUnitario());
         } else {
@@ -124,16 +119,15 @@ public class MesonGranitoService {
 
     private void validarCotizacionEditable(CotizacionPersonalizada cotizacion) {
         if (cotizacion == null || cotizacion.getCotizacion() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃƒÂ³n personalizada no encontrada");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotizacion personalizada no encontrada");
         }
 
         EstadoCotizacion estado = cotizacion.getCotizacion().getEstado();
         if (estado == EstadoCotizacion.APROBADA || estado == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "La cotizaciÃƒÂ³n no se puede modificar porque estÃƒÂ¡ en estado " + estado.name()
+                    "La cotizacion no se puede modificar porque esta en estado " + estado.name()
             );
         }
     }
 }
-

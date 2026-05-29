@@ -1,22 +1,15 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import jakarta.validation.constraints.Size;
-/**
- *
- * @author mary_
- */
 
 public class UsuarioUpdate {
 
+    // Campos permitidos para actualizar datos basicos del usuario.
     @Size(min = 5)
     private String nombreUsuario;
+
     private String celularUsuario;
     private String ciudadUsuario;
-    // getters y setters
 
     public String getNombreUsuario() {
         return nombreUsuario;
@@ -41,8 +34,4 @@ public class UsuarioUpdate {
     public void setCiudadUsuario(String ciudadUsuario) {
         this.ciudadUsuario = ciudadUsuario;
     }
-    
-    
-     
 }
-

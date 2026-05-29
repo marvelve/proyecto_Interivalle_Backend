@@ -1,11 +1,6 @@
 package com.interivalle.DTO;
 
 import java.util.List;
-/**
- *
- * @author mary_
- */
-
 
 public class CotizacionBaseFormularioResponse {
 
@@ -13,7 +8,10 @@ public class CotizacionBaseFormularioResponse {
     private Integer solicitudId;
     private String nombreProyecto;
     private String estado;
+
+    // Servicios que activan las secciones del formulario en el frontend.
     private List<SolicitudServicioItem> serviciosSeleccionados;
+
     private ManoObraBaseRequest manoObra;
     private CarpinteriaBaseRequest carpinteria;
     private VidrioBaseRequest vidrio;

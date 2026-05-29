@@ -220,7 +220,7 @@ public class AvanceSemanalService {
 
         if (req.getNumeroSemana() > totalSemanas) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La semana ingresada supera el total de semanas del cronograma");
+                    "La semana debe estar entre 1 y " + totalSemanas + " para este cronograma");
         }
 
         return cronograma;

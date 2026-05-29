@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Controlador;
 
 import com.interivalle.Modelo.ActividadPersonalizada;
@@ -24,10 +20,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-/**
- *
- * @author mary_
- */
 @RestController
 @RequestMapping("/api/actividades-personalizadas")
 @CrossOrigin(origins = "*")
@@ -35,37 +27,36 @@ public class ActividadPersonalizadaControler {
 
     @Autowired
     private ActividadPersonalizadaRepositorio actividadRepo;
+
     @Autowired
     private ServiciosRepositorio serviciosRepo;
 
     @GetMapping
     public List<ActividadPersonalizada> listar(@RequestParam(required = false) Integer idServicio) {
+        // Permite cargar todo el catalogo o solo las actividades activas de un servicio.
         if (idServicio != null) {
             return actividadRepo.findByServicios_IdServiciosAndEstadoTrue(idServicio);
         }
+
         return actividadRepo.findByEstadoTrue();
     }
-    
-     @GetMapping("/{id}")
+
+    @GetMapping("/{id}")
     public ActividadPersonalizada obtenerPorId(@PathVariable Integer id) {
         return actividadRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Actividad no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Actividad no encontrada"
+                ));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ActividadPersonalizada crear(@RequestBody ActividadPersonalizada actividad) {
-        if (actividad.getServicios() == null || actividad.getServicios().getIdServicio() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar el id del servicio");
-        }
-
-        Integer idServicio = actividad.getServicios().getIdServicio();
-
-        Servicios servicio = serviciosRepo.findById(idServicio)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
+        // Toda actividad personalizada debe quedar asociada a un servicio.
+        Servicios servicio = obtenerServicioDesdeActividad(actividad);
 
         actividad.setServicios(servicio);
-
         if (actividad.getEstado() == null) {
             actividad.setEstado(true);
         }
@@ -76,23 +67,22 @@ public class ActividadPersonalizadaControler {
     @PutMapping("/{id}")
     public ActividadPersonalizada actualizar(
             @PathVariable Integer id,
-            @RequestBody ActividadPersonalizada actividadRequest) {
-
+            @RequestBody ActividadPersonalizada actividadRequest
+    ) {
         ActividadPersonalizada actividad = actividadRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Actividad no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Actividad no encontrada"
+                ));
 
         actividad.setNombreActividad(actividadRequest.getNombreActividad());
         actividad.setTipoCobro(actividadRequest.getTipoCobro());
         actividad.setPrecioUnitario(actividadRequest.getPrecioUnitario());
         actividad.setEstado(actividadRequest.getEstado());
 
-        if (actividadRequest.getServicios() != null && actividadRequest.getServicios().getIdServicio() != null) {
-            Integer idServicio = actividadRequest.getServicios().getIdServicio();
-
-            Servicios servicio = serviciosRepo.findById(idServicio)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
-
-            actividad.setServicios(servicio);
+        if (actividadRequest.getServicios() != null
+                && actividadRequest.getServicios().getIdServicio() != null) {
+            actividad.setServicios(obtenerServicioDesdeActividad(actividadRequest));
         }
 
         return actividadRepo.save(actividad);
@@ -101,9 +91,24 @@ public class ActividadPersonalizadaControler {
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         ActividadPersonalizada actividad = actividadRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Actividad no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Actividad no encontrada"
+                ));
 
         actividadRepo.delete(actividad);
     }
-    
+
+    private Servicios obtenerServicioDesdeActividad(ActividadPersonalizada actividad) {
+        if (actividad.getServicios() == null || actividad.getServicios().getIdServicio() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar el id del servicio");
+        }
+
+        Integer idServicio = actividad.getServicios().getIdServicio();
+        return serviciosRepo.findById(idServicio)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Servicio no encontrado"
+                ));
+    }
 }

@@ -1,16 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
+
 import java.time.LocalDateTime;
-/**
- *
- * @author mary_
- */
 
 public class UsuarioResponse {
-    
+
+    // DTO de salida. No incluye la contrasena por seguridad.
     private Integer idUsuario;
     private String nombreUsuario;
     private String correoUsuario;
@@ -19,8 +13,6 @@ public class UsuarioResponse {
     private Integer idRol;
     private Boolean estadoUsuario;
     private LocalDateTime fechaRegistroUsuario;
-
-    // getters y setters
 
     public Integer getIdUsuario() {
         return idUsuario;
@@ -85,7 +77,4 @@ public class UsuarioResponse {
     public void setFechaRegistroUsuario(LocalDateTime fechaRegistroUsuario) {
         this.fechaRegistroUsuario = fechaRegistroUsuario;
     }
-    
-    
 }
-

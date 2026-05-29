@@ -1,6 +1,11 @@
 package com.interivalle.Security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -18,12 +23,12 @@ public class JwtService {
     private long expMs;
 
     private Key getKey() {
-        // Usar UTF-8 evita problemas de encoding
+        // Usa UTF-8 para evitar problemas con caracteres del secreto.
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generarToken(String correo, Integer idRol) {
-
+        // El correo queda como subject y el rol queda como claim del token.
         return Jwts.builder()
                 .setSubject(correo)
                 .claim("idRol", idRol)
@@ -42,11 +47,9 @@ public class JwtService {
     }
 
     public boolean esTokenValido(String token) {
-
         try {
             getClaims(token);
             return true;
-
         } catch (ExpiredJwtException e) {
             System.out.println("Token expirado");
         } catch (UnsupportedJwtException e) {
@@ -54,16 +57,16 @@ public class JwtService {
         } catch (MalformedJwtException e) {
             System.out.println("Token mal formado");
         } catch (SecurityException e) {
-            System.out.println("Firma inválida");
+            System.out.println("Firma invalida");
         } catch (IllegalArgumentException e) {
-            System.out.println("Token vacío");
+            System.out.println("Token vacio");
         }
 
         return false;
     }
 
     private Claims getClaims(String token) {
-
+        // Valida la firma y devuelve la informacion interna del token.
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()

@@ -1,19 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Security;
 
-/**
- *
- * @author mary_
- */
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Repositorio.UsuarioRepositorio;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,22 +18,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
-        Usuario u = usuarioRepo.findByCorreoUsuario(correo)
+        // Spring Security carga el usuario usando el correo que viene en el token.
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(correo)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
-        // Convertimos idRol a ROLE_...
-        String role = switch (u.getIdRol()) {
+        // Se convierte idRol al nombre de autoridad que usa el sistema.
+        String role = switch (usuario.getIdRol()) {
             case 1 -> "ADMIN";
             case 2 -> "SUPERVISOR";
             case 3 -> "CLIENTE";
-            default -> throw new UsernameNotFoundException("Rol inválido");
+            default -> throw new UsernameNotFoundException("Rol invalido");
         };
 
         return new org.springframework.security.core.userdetails.User(
-                u.getCorreoUsuario(),
-                u.getContrasenaUsuario(),
+                usuario.getCorreoUsuario(),
+                usuario.getContrasenaUsuario(),
                 List.of(new SimpleGrantedAuthority(role))
         );
     }
 }
-

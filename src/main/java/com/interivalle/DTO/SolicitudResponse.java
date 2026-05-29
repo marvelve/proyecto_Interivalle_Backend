@@ -1,17 +1,8 @@
-
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-/**
- *
- * @author mary_
- */
 
 public class SolicitudResponse {
 
@@ -22,6 +13,8 @@ public class SolicitudResponse {
     private List<SolicitudServicioItem> solicitudServicios;
     private LocalDate fechaSolicitud;
     private String correoUsuario;
+
+    // Datos visibles cuando la solicitud es de visita tecnica.
     private LocalDate fechaVisita;
     private LocalTime horaVisita;
     private String direccionVisita;
@@ -114,9 +107,4 @@ public class SolicitudResponse {
     public void setCelularCliente(String celularCliente) {
         this.celularCliente = celularCliente;
     }
-    
-    
-
 }
-
-

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.Modelo;
 
 import jakarta.persistence.Column;
@@ -15,37 +11,24 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-/**
- *
- * @author mary_
- */
 @Entity
 @Table(name = "visita_tecnica")
 public class VisitaTecnica {
-    
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_visita")
     private Integer idVisita;
-    
+
     @ManyToOne
     @JoinColumn(name = "id_solicitud")
     private Solicitud solicitud;
-    
+
     private LocalDate fechaVisita;
     private LocalTime horaVisita;
     private String direccionVisita;
     private String celularCliente;
     private String estadoVisita;
-
-    public Solicitud getSolicitud() {
-        return solicitud;
-    }
-
-    public void setSolicitud(Solicitud solicitud) {
-        this.solicitud = solicitud;
-    }
 
     public Integer getIdVisita() {
         return idVisita;
@@ -55,8 +38,14 @@ public class VisitaTecnica {
         this.idVisita = idVisita;
     }
 
-    
-    
+    public Solicitud getSolicitud() {
+        return solicitud;
+    }
+
+    public void setSolicitud(Solicitud solicitud) {
+        this.solicitud = solicitud;
+    }
+
     public LocalDate getFechaVisita() {
         return fechaVisita;
     }
@@ -96,6 +85,4 @@ public class VisitaTecnica {
     public void setEstadoVisita(String estadoVisita) {
         this.estadoVisita = estadoVisita;
     }
-    
-    
 }

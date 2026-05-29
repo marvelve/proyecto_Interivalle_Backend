@@ -1,25 +1,22 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import java.math.BigDecimal;
-/**
- *
- * @author mary_
- */
 
 public class CatalogoItemResponse {
 
+    // En el catalogo V2 este id es codificado para que sea unico entre actividad, material y producto.
     private Integer idCatalogoItem;
+    private Integer idItemOrigen;
     private String nombreItem;
     private String categoria;
     private String tipoItem;
+    private Integer idServicio;
     private String nombreServicio;
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
     private Boolean activo;
+    private String tablaOrigen;
+    private Integer relacionesV2;
 
     public Integer getIdCatalogoItem() {
         return idCatalogoItem;
@@ -27,6 +24,14 @@ public class CatalogoItemResponse {
 
     public void setIdCatalogoItem(Integer idCatalogoItem) {
         this.idCatalogoItem = idCatalogoItem;
+    }
+
+    public Integer getIdItemOrigen() {
+        return idItemOrigen;
+    }
+
+    public void setIdItemOrigen(Integer idItemOrigen) {
+        this.idItemOrigen = idItemOrigen;
     }
 
     public String getNombreItem() {
@@ -51,6 +56,14 @@ public class CatalogoItemResponse {
 
     public void setTipoItem(String tipoItem) {
         this.tipoItem = tipoItem;
+    }
+
+    public Integer getIdServicio() {
+        return idServicio;
+    }
+
+    public void setIdServicio(Integer idServicio) {
+        this.idServicio = idServicio;
     }
 
     public String getNombreServicio() {
@@ -83,5 +96,21 @@ public class CatalogoItemResponse {
 
     public void setActivo(Boolean activo) {
         this.activo = activo;
+    }
+
+    public String getTablaOrigen() {
+        return tablaOrigen;
+    }
+
+    public void setTablaOrigen(String tablaOrigen) {
+        this.tablaOrigen = tablaOrigen;
+    }
+
+    public Integer getRelacionesV2() {
+        return relacionesV2;
+    }
+
+    public void setRelacionesV2(Integer relacionesV2) {
+        this.relacionesV2 = relacionesV2;
     }
 }

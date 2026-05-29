@@ -1,20 +1,18 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import jakarta.validation.constraints.NotNull;
 
-/**
- *
- * @author mary_
- */
 public class RolUpdate {
+
+    // Roles validos: 1=ADMIN, 2=SUPERVISOR, 3=CLIENTE.
     @NotNull
-    private Integer idRol; // 1 ADMIN, 2 SUPERVISOR, 3 CLIENTE
+    private Integer idRol;
 
-    public Integer getIdRol() { return idRol; }
-    public void setIdRol(Integer idRol) { this.idRol = idRol; }
+    public Integer getIdRol() {
+        return idRol;
+    }
+
+    public void setIdRol(Integer idRol) {
+        this.idRol = idRol;
+    }
 }
-

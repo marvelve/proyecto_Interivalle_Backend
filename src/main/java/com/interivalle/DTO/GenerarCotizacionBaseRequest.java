@@ -1,23 +1,14 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-/**
- *
- * @author mary_
- */
-
-
 
 public class GenerarCotizacionBaseRequest {
 
     @NotNull(message = "La solicitud es obligatoria")
     private Integer solicitudId;
 
+    // Cada bloque se llena solo si el servicio fue seleccionado en la solicitud.
     @Valid
     private ManoObraBaseRequest manoObra;
 

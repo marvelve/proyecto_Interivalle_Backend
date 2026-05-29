@@ -4,7 +4,6 @@
  */
 package com.interivalle.Modelo;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 /**
@@ -24,11 +23,6 @@ public class MesonGranito {
     @ManyToOne
     @JoinColumn(name = "id_cotizacion_personalizada")
     private CotizacionPersonalizada cotizacionPersonalizada;
-
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cotizacion")
-    private CotizacionPersonalizada cotizacion;
 
     @Column(name = "tipo_granito", length = 100)
     private String tipoGranito;
@@ -71,14 +65,6 @@ public class MesonGranito {
 
     public void setCotizacionPersonalizada(CotizacionPersonalizada cotizacionPersonalizada) {
         this.cotizacionPersonalizada = cotizacionPersonalizada;
-    }
-
-    public CotizacionPersonalizada getCotizacion() {
-        return cotizacion;
-    }
-
-    public void setCotizacion(CotizacionPersonalizada cotizacion) {
-        this.cotizacion = cotizacion;
     }
 
     public String getTipoGranito() {

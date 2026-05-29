@@ -1,17 +1,8 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.interivalle.DTO;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
-
-/**
- *
- * @author mary_
- */
 
 public class CarpinteriaBaseRequest {
 
@@ -19,26 +10,28 @@ public class CarpinteriaBaseRequest {
     @Min(value = 0, message = "La cantidad de closet no puede ser negativa")
     private Integer cantidadCloset;
 
+    private Boolean vestierBasico = false;
+
     @NotNull(message = "La cantidad de puertas es obligatoria")
     @Min(value = 0, message = "La cantidad de puertas no puede ser negativa")
     private Integer cantidadPuertas;
 
     @NotNull(message = "Debe indicar la medida del mueble alto cocina")
-    private BigDecimal  muebleAltoCocina;
+    private BigDecimal muebleAltoCocina;
 
     @NotNull(message = "Debe indicar la medida del mueble bajo cocina")
-    private BigDecimal  muebleBajoCocina;
+    private BigDecimal muebleBajoCocina;
 
     @NotNull(message = "Debe indicar la medida del mueble barra")
-    private BigDecimal  muebleBarra;
+    private BigDecimal muebleBarra;
 
     @Min(value = 0, message = "La cantidad de baños no puede ser negativa")
     private Integer cantidadBanos;
-    
+
     @NotNull(message = "La cantidad de muebles de baño es obligatoria")
     @Min(value = 0, message = "La cantidad de muebles de baño no puede ser negativa")
     private Integer cantidadMuebleBajoBano;
-    
+
     @NotNull(message = "La cantidad de muebles de baño es obligatoria")
     @Min(value = 0, message = "La cantidad de muebles de baño no puede ser negativa")
     private Integer cantidadMuebleAltoBano;
@@ -49,6 +42,14 @@ public class CarpinteriaBaseRequest {
 
     public void setCantidadCloset(Integer cantidadCloset) {
         this.cantidadCloset = cantidadCloset;
+    }
+
+    public Boolean getVestierBasico() {
+        return vestierBasico;
+    }
+
+    public void setVestierBasico(Boolean vestierBasico) {
+        this.vestierBasico = vestierBasico;
     }
 
     public Integer getCantidadPuertas() {
@@ -83,6 +84,14 @@ public class CarpinteriaBaseRequest {
         this.muebleBarra = muebleBarra;
     }
 
+    public Integer getCantidadBanos() {
+        return cantidadBanos;
+    }
+
+    public void setCantidadBanos(Integer cantidadBanos) {
+        this.cantidadBanos = cantidadBanos;
+    }
+
     public Integer getCantidadMuebleBajoBano() {
         return cantidadMuebleBajoBano;
     }
@@ -98,14 +107,4 @@ public class CarpinteriaBaseRequest {
     public void setCantidadMuebleAltoBano(Integer cantidadMuebleAltoBano) {
         this.cantidadMuebleAltoBano = cantidadMuebleAltoBano;
     }
-
-    public Integer getCantidadBanos() {
-        return cantidadBanos;
-    }
-
-    public void setCantidadBanos(Integer cantidadBanos) {
-        this.cantidadBanos = cantidadBanos;
-    }
-
-    
 }
