@@ -1,5 +1,6 @@
 package com.interivalle.DTO;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public class CarpinteriaBaseRequest {
     private BigDecimal muebleBarra;
 
     @Min(value = 0, message = "La cantidad de baños no puede ser negativa")
+    @Max(value = 4, message = "La cantidad de baños solo puede ser 0, 1, 2, 3 o 4")
     private Integer cantidadBanos;
 
     @NotNull(message = "La cantidad de muebles de baño es obligatoria")

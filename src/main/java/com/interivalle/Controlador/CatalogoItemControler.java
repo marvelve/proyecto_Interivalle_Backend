@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * @author mary_
  */
 @RestController
-@RequestMapping("/api/catalogo-items")
+@RequestMapping({"/api/catalogo-v2", "/api/catalogo-items"})
 @CrossOrigin(origins = "*")
 public class CatalogoItemControler {
 

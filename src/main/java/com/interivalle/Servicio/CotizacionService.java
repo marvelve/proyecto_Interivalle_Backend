@@ -117,6 +117,7 @@ public class CotizacionService {
     @Autowired private CronogramaRepositorio cronogramaRepo;
     @Autowired private CronogramaService cronogramaServicio;
     @Autowired private NotificacionService notificacionService;
+    @Autowired private CotizacionBaseV2Service cotizacionBaseV2Service;
 
     // CREA COTIZACION MANUAL
     @Transactional
@@ -299,7 +300,10 @@ public class CotizacionService {
     // APROBAR
     @Transactional
     public CotizacionResponse aprobar(Integer idUsuario, Integer idCotizacion, AprobarCotizacionRequest req) {
-        Cotizacion cot = getCotizacionDelUsuario(idUsuario, idCotizacion);
+        Usuario usuario = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Cotizacion cot = getCotizacionParaAprobar(usuario, idCotizacion);
 
         if (cot.getEstado() != EstadoCotizacion.GENERADA && cot.getEstado() != EstadoCotizacion.EN_REVISION) {
             throw new ResponseStatusException(
@@ -314,9 +318,6 @@ public class CotizacionService {
                 "La fechaInicio es obligatoria para generar el cronograma"
             );
         }
-
-        Usuario usuario = usuarioRepo.findById(idUsuario)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         EstadoCotizacion anterior = cot.getEstado();
 
@@ -399,6 +400,19 @@ public class CotizacionService {
                 && req.getVidrio() == null
                 && req.getMezon() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar al menos una secciÃ³n de cotizaciÃ³n");
+        }
+
+        // La cotizacion base ya no debe generarse desde catalogo_item.
+        // Este metodo queda como compatibilidad y delega al catalogo nuevo V2.
+        if (usarCatalogoBaseV2()) {
+            Cotizacion cotV2 = cotizacionBaseV2Service.generarCotizacionBaseV2(req);
+            guardarHistorial(cotV2, null, EstadoCotizacion.GENERADA, usuario);
+            return construirCotizacionBaseResponse(
+                    solicitud,
+                    cotV2,
+                    req,
+                    "Cotizacion base guardada correctamente con catalogo V2"
+            );
         }
 
         Cotizacion cot = new Cotizacion();
@@ -495,24 +509,7 @@ public class CotizacionService {
                     continue;
                 }
 
-                CotizacionDetalle detActividad = new CotizacionDetalle();
-                detActividad.setCotizacion(cot);
-                detActividad.setServicio(actividad.getServicio());
-                detActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
-                detActividad.setCategoria(actividad.getCategoria());
-                detActividad.setSemana(actividad.getSemana());
-               // detActividad.setDescripcion(actividad.getNombreItem());
-                detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
-                detActividad.setActividadMaterial(actividad.getNombreItem());
-                detActividad.setCantidad(BigDecimal.ONE);
-                detActividad.setPrecioUnitarioVenta(valorActividad);
-                detActividad.setSubtotalVenta(valorActividad);
-                detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
-                detActividad.setSubtotalProveedor(BigDecimal.ZERO);
-
-                detalleRepo.save(detActividad);
-
-                totalManoObra = totalManoObra.add(valorActividad);
+                int repeticionesActividad = obtenerRepeticionesDetalleManoObra(actividad, req.getManoObra());
 
                 List<ActividadMaterial> materialesRelacionados =
                         obtenerMaterialesRelacionadosManoObra(
@@ -522,48 +519,69 @@ public class CotizacionService {
 
                 System.out.println("Materiales relacionados: " + materialesRelacionados.size());
 
-                for (ActividadMaterial rel : materialesRelacionados) {
-                    CatalogoItem material = rel.getMaterial();
+                for (int i = 0; i < repeticionesActividad; i++) {
+                    CotizacionDetalle detActividad = new CotizacionDetalle();
+                    detActividad.setCotizacion(cot);
+                    detActividad.setServicio(actividad.getServicio());
+                    detActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
+                    detActividad.setCategoria(actividad.getCategoria());
+                    detActividad.setSemana(actividad.getSemana());
+                   // detActividad.setDescripcion(actividad.getNombreItem());
+                    detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
+                    detActividad.setActividadMaterial(actividad.getNombreItem());
+                    detActividad.setCantidad(BigDecimal.ONE);
+                    detActividad.setPrecioUnitarioVenta(valorActividad);
+                    detActividad.setSubtotalVenta(valorActividad);
+                    detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
+                    detActividad.setSubtotalProveedor(BigDecimal.ZERO);
 
-                    if (material == null || material.getActivo() == null || !material.getActivo()) {
-                        continue;
+                    detalleRepo.save(detActividad);
+
+                    totalManoObra = totalManoObra.add(valorActividad);
+
+                    for (ActividadMaterial rel : materialesRelacionados) {
+                        CatalogoItem material = rel.getMaterial();
+
+                        if (material == null || material.getActivo() == null || !material.getActivo()) {
+                            continue;
+                        }
+
+                        BigDecimal cantidadMaterial = calcularCantidadMaterial(rel, req);
+
+                        if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
+                            continue;
+                        }
+
+                        BigDecimal precioVenta = material.getPrecioUnitarioVenta() != null
+                                ? material.getPrecioUnitarioVenta()
+                                : BigDecimal.ZERO;
+
+                        BigDecimal precioProveedor = material.getPrecioUnitarioProveedor() != null
+                                ? material.getPrecioUnitarioProveedor()
+                                : BigDecimal.ZERO;
+
+                        BigDecimal subtotalVenta = cantidadMaterial.multiply(precioVenta);
+                        BigDecimal subtotalProveedor = cantidadMaterial.multiply(precioProveedor);
+
+                        CotizacionDetalle detMaterial = new CotizacionDetalle();
+                        detMaterial.setCotizacion(cot);
+                        detMaterial.setServicio(material.getServicio());
+                        detMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
+                        detMaterial.setCategoria(material.getCategoria());
+                        detMaterial.setSemana(rel.getSemana() != null ? rel.getSemana() : actividad.getSemana());
+                        //detMaterial.setDescripcion(material.getNombreItem());
+                        detMaterial.setDescripcion(obtenerDescripcionCatalogo(material));
+                        detMaterial.setActividadMaterial(actividad.getNombreItem());
+                        detMaterial.setCantidad(cantidadMaterial);
+                        detMaterial.setPrecioUnitarioVenta(precioVenta);
+                        detMaterial.setSubtotalVenta(subtotalVenta);
+                        detMaterial.setPrecioUnitarioProveedor(precioProveedor);
+                        detMaterial.setSubtotalProveedor(subtotalProveedor);
+
+                        detalleRepo.save(detMaterial);
+
+                        totalMateriales = totalMateriales.add(subtotalVenta);
                     }
-
-                    BigDecimal cantidadMaterial = calcularCantidadMaterial(rel, req);
-
-                    if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
-                        continue;
-                    }
-
-                    BigDecimal precioVenta = material.getPrecioUnitarioVenta() != null
-                            ? material.getPrecioUnitarioVenta()
-                            : BigDecimal.ZERO;
-
-                    BigDecimal precioProveedor = material.getPrecioUnitarioProveedor() != null
-                            ? material.getPrecioUnitarioProveedor()
-                            : BigDecimal.ZERO;
-
-                    BigDecimal subtotalVenta = cantidadMaterial.multiply(precioVenta);
-                    BigDecimal subtotalProveedor = cantidadMaterial.multiply(precioProveedor);
-
-                    CotizacionDetalle detMaterial = new CotizacionDetalle();
-                    detMaterial.setCotizacion(cot);
-                    detMaterial.setServicio(material.getServicio());
-                    detMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
-                    detMaterial.setCategoria(material.getCategoria());
-                    detMaterial.setSemana(rel.getSemana() != null ? rel.getSemana() : actividad.getSemana());
-                    //detMaterial.setDescripcion(material.getNombreItem());
-                    detMaterial.setDescripcion(obtenerDescripcionCatalogo(material));
-                    detMaterial.setActividadMaterial(actividad.getNombreItem());
-                    detMaterial.setCantidad(cantidadMaterial);
-                    detMaterial.setPrecioUnitarioVenta(precioVenta);
-                    detMaterial.setSubtotalVenta(subtotalVenta);
-                    detMaterial.setPrecioUnitarioProveedor(precioProveedor);
-                    detMaterial.setSubtotalProveedor(subtotalProveedor);
-
-                    detalleRepo.save(detMaterial);
-
-                    totalMateriales = totalMateriales.add(subtotalVenta);
                 }
             }
         }
@@ -705,6 +723,16 @@ public class CotizacionService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         Cotizacion cot = getCotizacionDelUsuario(idUsuario, idCotizacion);
+        if (usarCatalogoBaseV2()) {
+            Cotizacion actualizada = cotizacionBaseV2Service.actualizarCotizacionBaseV2(idCotizacion, req);
+            guardarObservacion(actualizada, usuario, TipoObservacion.COMENTARIO, "Cotizacion base actualizada");
+            return construirCotizacionBaseResponse(
+                    actualizada.getSolicitud(),
+                    actualizada,
+                    req,
+                    "Cotizacion base actualizada correctamente con catalogo V2"
+            );
+        }
         return actualizarCotizacionBaseInterna(cot, req, usuario);
     }
 
@@ -715,8 +743,22 @@ public class CotizacionService {
                 HttpStatus.NOT_FOUND,
                 "Cotizacion no encontrada"
             ));
+        if (usarCatalogoBaseV2()) {
+            Cotizacion actualizada = cotizacionBaseV2Service.actualizarCotizacionBaseV2(idCotizacion, req);
+            guardarObservacion(actualizada, actualizada.getCreadaPor(), TipoObservacion.COMENTARIO, "Cotizacion base actualizada");
+            return construirCotizacionBaseResponse(
+                    actualizada.getSolicitud(),
+                    actualizada,
+                    req,
+                    "Cotizacion base actualizada correctamente con catalogo V2"
+            );
+        }
 
         return actualizarCotizacionBaseInterna(cot, req, cot.getCreadaPor());
+    }
+
+    private boolean usarCatalogoBaseV2() {
+        return true;
     }
 
     private CotizacionBaseResponse actualizarCotizacionBaseInterna(Cotizacion cot, GenerarCotizacionBaseRequest req, Usuario usuario) {
@@ -969,22 +1011,7 @@ public class CotizacionService {
                     continue;
                 }
 
-                CotizacionDetalle detActividad = new CotizacionDetalle();
-                detActividad.setCotizacion(cot);
-                detActividad.setServicio(actividad.getServicio());
-                detActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
-                detActividad.setCategoria(actividad.getCategoria());
-                detActividad.setSemana(actividad.getSemana());
-                detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
-                detActividad.setActividadMaterial(actividad.getNombreItem());
-                detActividad.setCantidad(BigDecimal.ONE);
-                detActividad.setPrecioUnitarioVenta(valorActividad);
-                detActividad.setSubtotalVenta(valorActividad);
-                detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
-                detActividad.setSubtotalProveedor(BigDecimal.ZERO);
-
-                detalleRepo.save(detActividad);
-                totales.manoObra = totales.manoObra.add(valorActividad);
+                int repeticionesActividad = obtenerRepeticionesDetalleManoObra(actividad, req.getManoObra());
 
                 List<ActividadMaterial> materialesRelacionados =
                         obtenerMaterialesRelacionadosManoObra(
@@ -992,46 +1019,65 @@ public class CotizacionService {
                                 actividadesManoObra
                         );
 
-                for (ActividadMaterial rel : materialesRelacionados) {
-                    CatalogoItem material = rel.getMaterial();
+                for (int i = 0; i < repeticionesActividad; i++) {
+                    CotizacionDetalle detActividad = new CotizacionDetalle();
+                    detActividad.setCotizacion(cot);
+                    detActividad.setServicio(actividad.getServicio());
+                    detActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
+                    detActividad.setCategoria(actividad.getCategoria());
+                    detActividad.setSemana(actividad.getSemana());
+                    detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
+                    detActividad.setActividadMaterial(actividad.getNombreItem());
+                    detActividad.setCantidad(BigDecimal.ONE);
+                    detActividad.setPrecioUnitarioVenta(valorActividad);
+                    detActividad.setSubtotalVenta(valorActividad);
+                    detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
+                    detActividad.setSubtotalProveedor(BigDecimal.ZERO);
 
-                    if (material == null || material.getActivo() == null || !material.getActivo()) {
-                        continue;
+                    detalleRepo.save(detActividad);
+                    totales.manoObra = totales.manoObra.add(valorActividad);
+
+                    for (ActividadMaterial rel : materialesRelacionados) {
+                        CatalogoItem material = rel.getMaterial();
+
+                        if (material == null || material.getActivo() == null || !material.getActivo()) {
+                            continue;
+                        }
+
+                        BigDecimal cantidadMaterial = calcularCantidadMaterial(rel, req);
+
+                        if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
+                            continue;
+                        }
+
+                        BigDecimal precioVenta = material.getPrecioUnitarioVenta() != null
+                                ? material.getPrecioUnitarioVenta()
+                                : BigDecimal.ZERO;
+
+                        BigDecimal precioProveedor = material.getPrecioUnitarioProveedor() != null
+                                ? material.getPrecioUnitarioProveedor()
+                                : BigDecimal.ZERO;
+
+                        BigDecimal subtotalVenta = cantidadMaterial.multiply(precioVenta);
+                        BigDecimal subtotalProveedor = cantidadMaterial.multiply(precioProveedor);
+
+                        CotizacionDetalle detMaterial = new CotizacionDetalle();
+                        detMaterial.setCotizacion(cot);
+                        detMaterial.setServicio(material.getServicio());
+                        detMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
+                        detMaterial.setCategoria(material.getCategoria());
+                        detMaterial.setSemana(rel.getSemana() != null ? rel.getSemana() : actividad.getSemana());
+                        detMaterial.setDescripcion(obtenerDescripcionCatalogo(material));
+                        detMaterial.setActividadMaterial(actividad.getNombreItem());
+                        detMaterial.setCantidad(cantidadMaterial);
+                        detMaterial.setPrecioUnitarioVenta(precioVenta);
+                        detMaterial.setSubtotalVenta(subtotalVenta);
+                        detMaterial.setPrecioUnitarioProveedor(precioProveedor);
+                        detMaterial.setSubtotalProveedor(subtotalProveedor);
+
+                        detalleRepo.save(detMaterial);
+                        totales.materiales = totales.materiales.add(subtotalVenta);
                     }
-
-                    BigDecimal cantidadMaterial = calcularCantidadMaterial(rel, req);
-
-                    if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
-                        continue;
-                    }
-
-                    BigDecimal precioVenta = material.getPrecioUnitarioVenta() != null
-                            ? material.getPrecioUnitarioVenta()
-                            : BigDecimal.ZERO;
-
-                    BigDecimal precioProveedor = material.getPrecioUnitarioProveedor() != null
-                            ? material.getPrecioUnitarioProveedor()
-                            : BigDecimal.ZERO;
-
-                    BigDecimal subtotalVenta = cantidadMaterial.multiply(precioVenta);
-                    BigDecimal subtotalProveedor = cantidadMaterial.multiply(precioProveedor);
-
-                    CotizacionDetalle detMaterial = new CotizacionDetalle();
-                    detMaterial.setCotizacion(cot);
-                    detMaterial.setServicio(material.getServicio());
-                    detMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
-                    detMaterial.setCategoria(material.getCategoria());
-                    detMaterial.setSemana(rel.getSemana() != null ? rel.getSemana() : actividad.getSemana());
-                    detMaterial.setDescripcion(obtenerDescripcionCatalogo(material));
-                    detMaterial.setActividadMaterial(actividad.getNombreItem());
-                    detMaterial.setCantidad(cantidadMaterial);
-                    detMaterial.setPrecioUnitarioVenta(precioVenta);
-                    detMaterial.setSubtotalVenta(subtotalVenta);
-                    detMaterial.setPrecioUnitarioProveedor(precioProveedor);
-                    detMaterial.setSubtotalProveedor(subtotalProveedor);
-
-                    detalleRepo.save(detMaterial);
-                    totales.materiales = totales.materiales.add(subtotalVenta);
                 }
             }
         }
@@ -1404,7 +1450,19 @@ private int cantidadBanos(ManoObraBaseRequest manoObra) {
         return 0;
     }
 
-    return Math.max(0, Math.min(manoObra.getCantidadBanos(), 2));
+    return Math.max(0, Math.min(manoObra.getCantidadBanos(), 4));
+}
+
+private int obtenerRepeticionesDetalleManoObra(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
+    if (actividad == null || manoObra == null) {
+        return 1;
+    }
+
+    if (textoCatalogo(actividad).contains("bano principal")) {
+        return Math.max(1, cantidadBanos(manoObra) - 1);
+    }
+
+    return 1;
 }
 
 private int obtenerCantidadPoyos(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
@@ -2202,6 +2260,17 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃ³n no encontrada o sin acceso"));
     }
 
+    private Cotizacion getCotizacionParaAprobar(Usuario usuario, Integer idCotizacion) {
+        Integer idRol = usuario != null ? usuario.getIdRol() : null;
+
+        if (idRol != null && (idRol == 1 || idRol == 2)) {
+            return cotizacionRepo.findById(idCotizacion)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CotizaciÃƒÂ³n no encontrada"));
+        }
+
+        return getCotizacionDelUsuario(usuario.getIdUsuario(), idCotizacion);
+    }
+
     private void guardarObservacion(Cotizacion cot, Usuario usuario, TipoObservacion tipo, String mensaje) {
         if (mensaje == null || mensaje.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "mensaje es obligatorio");
@@ -2268,11 +2337,8 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
     List<CotizacionDetalle> detalles = detalleRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion());
     detalles.sort(Comparator
         .comparing((CotizacionDetalle d) -> d.getServicio().getIdServicio())
-        .thenComparing(d -> d.getTipoItem().name())
-        .thenComparing(d -> d.getCategoria() == null ? "" : d.getCategoria())
         .thenComparing(d -> d.getSemana() == null ? 0 : d.getSemana())
-        .thenComparing(d -> d.getActividadMaterial() == null ? "" : d.getActividadMaterial())
-        .thenComparing(d -> d.getDescripcion() == null ? "" : d.getDescripcion())
+        .thenComparing(d -> d.getIdDetalle() == null ? 0 : d.getIdDetalle())
     );
 
     List<CotizacionDetalleResponse> detResp = detalles.stream()
@@ -2365,19 +2431,15 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     return texto == null ? "" : texto.trim().toLowerCase();
     }
     
-    private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<CotizacionDetalleResponse> items) {
-
-    List<CotizacionDetalleResponse> actividades = items.stream()
-        .filter(i -> i.getTipoItem() == TipoItemCotizacion.ACTIVIDAD)
-        .collect(Collectors.toList());
-
-    List<CotizacionDetalleResponse> materiales = items.stream()
-        .filter(i -> i.getTipoItem() == TipoItemCotizacion.MATERIAL)
-        .collect(Collectors.toList());
-
+private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<CotizacionDetalleResponse> items) {
     List<ActividadAgrupadaResponse> resultado = new ArrayList<>();
 
-    for (CotizacionDetalleResponse act : actividades) {
+    for (int index = 0; index < items.size(); index++) {
+        CotizacionDetalleResponse act = items.get(index);
+        if (act.getTipoItem() != TipoItemCotizacion.ACTIVIDAD) {
+            continue;
+        }
+
         ActividadAgrupadaResponse actividad = new ActividadAgrupadaResponse();
         actividad.setActividad( act.getActividadMaterial() != null && !act.getActividadMaterial().trim().isEmpty()
         ? act.getActividadMaterial()
@@ -2387,16 +2449,15 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
             act.getSubtotalVenta() != null ? act.getSubtotalVenta() : BigDecimal.ZERO
         );
 
-        String nombreActividad = normalizarTexto(
-            act.getActividadMaterial() != null ? act.getActividadMaterial() : act.getDescripcion()
-        );
+        List<MaterialAgrupadoResponse> mats = new ArrayList<>();
+        for (int materialIndex = index + 1; materialIndex < items.size(); materialIndex++) {
+            CotizacionDetalleResponse mat = items.get(materialIndex);
+            if (mat.getTipoItem() == TipoItemCotizacion.ACTIVIDAD
+                    || mat.getTipoItem() == TipoItemCotizacion.PRODUCTO) {
+                break;
+            }
 
-        List<MaterialAgrupadoResponse> mats = materiales.stream()
-            .filter(mat -> {
-                String relacionMaterial = normalizarTexto(mat.getActividadMaterial());
-                return relacionMaterial.equals(nombreActividad);
-            })
-            .map(mat -> {
+            if (mat.getTipoItem() == TipoItemCotizacion.MATERIAL) {
                 MaterialAgrupadoResponse m = new MaterialAgrupadoResponse();
                 m.setIdDetalle(mat.getIdDetalle());
                 m.setCantidad(mat.getCantidad());
@@ -2404,9 +2465,9 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
                 m.setPrecioMaterial(
                     mat.getSubtotalVenta() != null ? mat.getSubtotalVenta() : BigDecimal.ZERO
                 );
-                return m;
-            })
-            .collect(Collectors.toList());
+                mats.add(m);
+            }
+        }
 
         actividad.setMateriales(mats);
         resultado.add(actividad);
@@ -2466,11 +2527,8 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     List<CotizacionDetalle> detalles = detalleRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion());
     detalles.sort(Comparator
         .comparing((CotizacionDetalle d) -> d.getServicio().getIdServicio())
-        .thenComparing(d -> d.getTipoItem().name())
-        .thenComparing(d -> d.getCategoria() == null ? "" : d.getCategoria())
         .thenComparing(d -> d.getSemana() == null ? 0 : d.getSemana())
-        .thenComparing(d -> d.getActividadMaterial() == null ? "" : d.getActividadMaterial())
-        .thenComparing(d -> d.getDescripcion() == null ? "" : d.getDescripcion())
+        .thenComparing(d -> d.getIdDetalle() == null ? 0 : d.getIdDetalle())
     );
 
     List<CotizacionDetalleResponse> detalleBase = detalles.stream()
@@ -2535,11 +2593,8 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         List<CotizacionDetalle> detalles = detalleRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion());
         detalles.sort(Comparator
             .comparing((CotizacionDetalle d) -> d.getServicio().getIdServicio())
-            .thenComparing(d -> d.getTipoItem().name())
-            .thenComparing(d -> d.getCategoria() == null ? "" : d.getCategoria())
             .thenComparing(d -> d.getSemana() == null ? 0 : d.getSemana())
-            .thenComparing(d -> d.getActividadMaterial() == null ? "" : d.getActividadMaterial())
-            .thenComparing(d -> d.getDescripcion() == null ? "" : d.getDescripcion())
+            .thenComparing(d -> d.getIdDetalle() == null ? 0 : d.getIdDetalle())
         );
 
         List<CotizacionDetalleResponse> detalleBase = detalles.stream()
@@ -2632,10 +2687,6 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
             return cantidadDesdeEntero(req.getCantidadCloset());
         }
 
-        if (texto.contains("puerta")) {
-            return cantidadDesdeEntero(req.getCantidadPuertas());
-        }
-
         if (texto.contains("mueble alto") && texto.contains("cocina")) {
             return cantidadDesdeDecimal(req.getMuebleAltoCocina());
         }
@@ -2647,43 +2698,32 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
         boolean esProductoBano = texto.contains("bano") || texto.contains("lavamanos");
 
         if (texto.contains("mueble alto") && esProductoBano) {
-            return cantidadMuebleBano(
-                    req.getCantidadMuebleAltoBano(),
-                    req.getCantidadBanos()
-            );
+            return cantidadDesdeEntero(req.getCantidadMuebleAltoBano());
         }
 
         if (texto.contains("mueble bajo") && esProductoBano) {
-            return cantidadMuebleBano(
-                    req.getCantidadMuebleBajoBano(),
-                    req.getCantidadBanos()
-            );
+            return cantidadDesdeEntero(req.getCantidadMuebleBajoBano());
         }
 
         // soluciÃ³n rÃ¡pida: un solo campo del formulario alimenta ambos muebles de baÃ±o
        if (nombre.contains("mueble bajo baÃ±o") || nombre.contains("mueble bajo bano")) {
-        return req.getCantidadBanos() == null
-                ? BigDecimal.ZERO
-                : BigDecimal.valueOf(req.getCantidadBanos());
+        return cantidadDesdeEntero(req.getCantidadMuebleBajoBano());
         }
 
         if (nombre.contains("mueble alto para baÃ±o") || nombre.contains("mueble alto para bano")) {
-            return req.getCantidadBanos() == null
-                    ? BigDecimal.ZERO
-                    : BigDecimal.valueOf(req.getCantidadBanos());
+            return cantidadDesdeEntero(req.getCantidadMuebleAltoBano());
         }
 
         // todavÃ­a no existe en tu formulario actual
+        if (texto.contains("puerta")) {
+            return cantidadDesdeEntero(req.getCantidadPuertas());
+        }
+
         if (nombre.contains("mueble barra")) {
             return cantidadDesdeDecimal(req.getMuebleBarra());
         }
 
         return BigDecimal.ZERO;
-    }
-
-    private BigDecimal cantidadMuebleBano(Integer cantidadEspecifica, Integer cantidadBanos) {
-        Integer cantidad = cantidadEspecifica != null ? cantidadEspecifica : cantidadBanos;
-        return cantidadDesdeEntero(cantidad);
     }
 
     private BigDecimal cantidadDesdeEntero(Integer valor) {

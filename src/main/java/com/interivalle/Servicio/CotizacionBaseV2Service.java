@@ -198,30 +198,14 @@ public class CotizacionBaseV2Service {
                     continue;
                 }
 
+                int repeticionesActividad = obtenerRepeticionesDetalleManoObra(actividad, request.getManoObra(), idServicio);
+
                 BigDecimal precioActividad = valorSeguro(actividad.getPrecioUnitarioVenta());
                 BigDecimal subtotalActividad = cantidadActividad.multiply(precioActividad);
 
                 if (subtotalActividad.compareTo(BigDecimal.ZERO) <= 0) {
                     continue;
                 }
-
-                CotizacionDetalle detalleActividad = new CotizacionDetalle();
-                detalleActividad.setCotizacion(cotizacion);
-                detalleActividad.setServicio(actividad.getServicio());
-                detalleActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
-                detalleActividad.setCategoria(actividad.getCategoria());
-                detalleActividad.setSemana(actividad.getSemana());
-                detalleActividad.setDescripcion(textoPrincipal(actividad.getDescripcion(), actividad.getNombreActividad()));
-                detalleActividad.setActividadMaterial(actividad.getNombreActividad());
-                detalleActividad.setCantidad(redondear(cantidadActividad));
-                detalleActividad.setUnidad(actividad.getUnidad());
-                detalleActividad.setPrecioUnitarioVenta(redondear(precioActividad));
-                detalleActividad.setSubtotalVenta(redondear(subtotalActividad));
-                detalleActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
-                detalleActividad.setSubtotalProveedor(BigDecimal.ZERO);
-
-                cotizacionDetalleRepositorio.save(detalleActividad);
-                totales.totalManoObra = totales.totalManoObra.add(subtotalActividad);
 
                 // Por cada actividad se agregan sus materiales relacionados en actividad_material_v2.
                 List<ActividadMaterialV2> materialesRelacionados =
@@ -231,41 +215,61 @@ public class CotizacionBaseV2Service {
                                 idServicio
                         );
 
-                for (ActividadMaterialV2 relacion : materialesRelacionados) {
-                    Material material = relacion.getMaterial();
+                for (int i = 0; i < repeticionesActividad; i++) {
+                    CotizacionDetalle detalleActividad = new CotizacionDetalle();
+                    detalleActividad.setCotizacion(cotizacion);
+                    detalleActividad.setServicio(actividad.getServicio());
+                    detalleActividad.setTipoItem(TipoItemCotizacion.ACTIVIDAD);
+                    detalleActividad.setCategoria(actividad.getCategoria());
+                    detalleActividad.setSemana(actividad.getSemana());
+                    detalleActividad.setDescripcion(textoPrincipal(actividad.getDescripcion(), actividad.getNombreActividad()));
+                    detalleActividad.setActividadMaterial(actividad.getNombreActividad());
+                    detalleActividad.setCantidad(redondear(cantidadActividad));
+                    detalleActividad.setUnidad(actividad.getUnidad());
+                    detalleActividad.setPrecioUnitarioVenta(redondear(precioActividad));
+                    detalleActividad.setSubtotalVenta(redondear(subtotalActividad));
+                    detalleActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
+                    detalleActividad.setSubtotalProveedor(BigDecimal.ZERO);
 
-                    if (material == null || !Boolean.TRUE.equals(material.getActivo())) {
-                        continue;
+                    cotizacionDetalleRepositorio.save(detalleActividad);
+                    totales.totalManoObra = totales.totalManoObra.add(subtotalActividad);
+
+                    for (ActividadMaterialV2 relacion : materialesRelacionados) {
+                        Material material = relacion.getMaterial();
+
+                        if (material == null || !Boolean.TRUE.equals(material.getActivo())) {
+                            continue;
+                        }
+
+                        BigDecimal cantidadMaterial = calcularCantidadMaterial(relacion, cantidadActividad, request);
+
+                        if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
+                            continue;
+                        }
+
+                        BigDecimal precioVentaMaterial = valorSeguro(material.getPrecioUnitarioVenta());
+                        BigDecimal precioProveedorMaterial = valorSeguro(material.getPrecioUnitarioProveedor());
+                        BigDecimal subtotalVentaMaterial = cantidadMaterial.multiply(precioVentaMaterial);
+                        BigDecimal subtotalProveedorMaterial = cantidadMaterial.multiply(precioProveedorMaterial);
+
+                        CotizacionDetalle detalleMaterial = new CotizacionDetalle();
+                        detalleMaterial.setCotizacion(cotizacion);
+                        detalleMaterial.setServicio(material.getServicio());
+                        detalleMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
+                        detalleMaterial.setCategoria(material.getCategoria());
+                        detalleMaterial.setSemana(relacion.getSemana() != null ? relacion.getSemana() : actividad.getSemana());
+                        detalleMaterial.setDescripcion(textoPrincipal(material.getNombreMaterial(), material.getDescripcion()));
+                        detalleMaterial.setActividadMaterial(actividad.getNombreActividad());
+                        detalleMaterial.setCantidad(redondear(cantidadMaterial));
+                        detalleMaterial.setUnidad(material.getUnidad());
+                        detalleMaterial.setPrecioUnitarioVenta(redondear(precioVentaMaterial));
+                        detalleMaterial.setSubtotalVenta(redondear(subtotalVentaMaterial));
+                        detalleMaterial.setPrecioUnitarioProveedor(redondear(precioProveedorMaterial));
+                        detalleMaterial.setSubtotalProveedor(redondear(subtotalProveedorMaterial));
+
+                        cotizacionDetalleRepositorio.save(detalleMaterial);
+                        totales.totalMateriales = totales.totalMateriales.add(subtotalVentaMaterial);
                     }
-
-                    BigDecimal cantidadMaterial = calcularCantidadMaterial(relacion, cantidadActividad, request);
-
-                    if (cantidadMaterial.compareTo(BigDecimal.ZERO) <= 0) {
-                        continue;
-                    }
-
-                    BigDecimal precioVentaMaterial = valorSeguro(material.getPrecioUnitarioVenta());
-                    BigDecimal precioProveedorMaterial = valorSeguro(material.getPrecioUnitarioProveedor());
-                    BigDecimal subtotalVentaMaterial = cantidadMaterial.multiply(precioVentaMaterial);
-                    BigDecimal subtotalProveedorMaterial = cantidadMaterial.multiply(precioProveedorMaterial);
-
-                    CotizacionDetalle detalleMaterial = new CotizacionDetalle();
-                    detalleMaterial.setCotizacion(cotizacion);
-                    detalleMaterial.setServicio(material.getServicio());
-                    detalleMaterial.setTipoItem(TipoItemCotizacion.MATERIAL);
-                    detalleMaterial.setCategoria(material.getCategoria());
-                    detalleMaterial.setSemana(relacion.getSemana() != null ? relacion.getSemana() : actividad.getSemana());
-                    detalleMaterial.setDescripcion(textoPrincipal(material.getNombreMaterial(), material.getDescripcion()));
-                    detalleMaterial.setActividadMaterial(actividad.getNombreActividad());
-                    detalleMaterial.setCantidad(redondear(cantidadMaterial));
-                    detalleMaterial.setUnidad(material.getUnidad());
-                    detalleMaterial.setPrecioUnitarioVenta(redondear(precioVentaMaterial));
-                    detalleMaterial.setSubtotalVenta(redondear(subtotalVentaMaterial));
-                    detalleMaterial.setPrecioUnitarioProveedor(redondear(precioProveedorMaterial));
-                    detalleMaterial.setSubtotalProveedor(redondear(subtotalProveedorMaterial));
-
-                    cotizacionDetalleRepositorio.save(detalleMaterial);
-                    totales.totalMateriales = totales.totalMateriales.add(subtotalVentaMaterial);
                 }
             }
         }
@@ -304,7 +308,8 @@ public class CotizacionBaseV2Service {
                 detalleProducto.setTipoItem(TipoItemCotizacion.PRODUCTO);
                 detalleProducto.setCategoria(producto.getCategoria());
                 detalleProducto.setSemana(producto.getSemana());
-                detalleProducto.setDescripcion(textoPrincipal(producto.getDescripcion(), producto.getNombreProducto()));
+                // En los detalles de productos se muestra el nombre_producto del catalogo nuevo.
+                detalleProducto.setDescripcion(producto.getNombreProducto());
                 detalleProducto.setActividadMaterial(producto.getNombreProducto());
                 detalleProducto.setCantidad(redondear(cantidadProducto));
                 detalleProducto.setUnidad(producto.getUnidad());
@@ -1100,7 +1105,29 @@ public class CotizacionBaseV2Service {
             return 0;
         }
 
-        return Math.max(0, Math.min(manoObra.getCantidadBanos(), 2));
+        return Math.max(0, Math.min(manoObra.getCantidadBanos(), 4));
+    }
+
+    private int obtenerRepeticionesDetalleManoObra(
+            Actividad actividad,
+            ManoObraBaseRequest manoObra,
+            Integer idServicio
+    ) {
+        if (idServicio != SERVICIO_OBRA_BLANCA || actividad == null || manoObra == null) {
+            return 1;
+        }
+
+        if (esActividadBanoPrincipal(actividad, idServicio)) {
+            return Math.max(1, cantidadBanos(manoObra) - 1);
+        }
+
+        return 1;
+    }
+
+    private boolean esActividadBanoPrincipal(Actividad actividad, Integer idServicio) {
+        return idServicio == SERVICIO_OBRA_BLANCA
+                && actividad != null
+                && textoActividad(actividad).contains("bano principal");
     }
 
     private BigDecimal obtenerCantidadPoyos(Actividad actividad, ManoObraBaseRequest manoObra) {
@@ -1207,9 +1234,6 @@ public class CotizacionBaseV2Service {
         if (texto.contains("closet")) {
             return cantidadDesdeEntero(request.getCantidadCloset());
         }
-        if (texto.contains("puerta")) {
-            return cantidadDesdeEntero(request.getCantidadPuertas());
-        }
         if (texto.contains("mueble alto") && texto.contains("cocina")) {
             return valorSeguro(request.getMuebleAltoCocina());
         }
@@ -1223,18 +1247,13 @@ public class CotizacionBaseV2Service {
         boolean esBano = texto.contains("bano") || texto.contains("lavamanos");
 
         if (texto.contains("mueble alto") && esBano) {
-            return cantidadDesdeEntero(
-                    request.getCantidadMuebleAltoBano() != null
-                    ? request.getCantidadMuebleAltoBano()
-                    : request.getCantidadBanos()
-            );
+            return cantidadDesdeEntero(request.getCantidadMuebleAltoBano());
         }
         if (texto.contains("mueble bajo") && esBano) {
-            return cantidadDesdeEntero(
-                    request.getCantidadMuebleBajoBano() != null
-                    ? request.getCantidadMuebleBajoBano()
-                    : request.getCantidadBanos()
-            );
+            return cantidadDesdeEntero(request.getCantidadMuebleBajoBano());
+        }
+        if (texto.contains("puerta")) {
+            return cantidadDesdeEntero(request.getCantidadPuertas());
         }
 
         return BigDecimal.ZERO;

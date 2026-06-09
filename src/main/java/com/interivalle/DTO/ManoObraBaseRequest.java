@@ -14,7 +14,7 @@ public class ManoObraBaseRequest {
 
     @NotNull(message = "La cantidad de baños es obligatoria")
     @Min(value = 0, message = "La cantidad de baños no puede ser negativa")
-    @Max(value = 2, message = "La cantidad de baños solo puede ser 0, 1 o 2")
+    @Max(value = 4, message = "La cantidad de baños solo puede ser 0, 1, 2, 3 o 4")
     private Integer cantidadBanos;
 
     @NotBlank(message = "El tipo de cielo es obligatorio")
