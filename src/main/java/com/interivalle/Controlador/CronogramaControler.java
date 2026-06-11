@@ -5,6 +5,7 @@
 package com.interivalle.Controlador;
 
 import com.interivalle.DTO.ActualizarCronogramaDetalleRequest;
+import com.interivalle.DTO.ActualizarCronogramaPendienteRequest;
 import com.interivalle.DTO.CronogramaDetalleVistaDTO;
 import com.interivalle.DTO.CronogramaListResponse;
 import com.interivalle.DTO.CronogramaResponse;
@@ -45,6 +46,27 @@ public class CronogramaControler {
     public List<FechaInicioDisponibleResponse> listarFechasInicioDisponibles(
             @RequestParam(defaultValue = "365") Integer dias) {
         return cronogramaService.listarFechasInicioDisponibles(dias);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PutMapping("/{idCronograma}/pendiente")
+    public ResponseEntity<CronogramaVistaResponse> actualizarCronogramaPendiente(
+            @PathVariable Integer idCronograma,
+            @RequestBody ActualizarCronogramaPendienteRequest req,
+            Authentication auth) {
+        return ResponseEntity.ok(
+                cronogramaService.actualizarCronogramaPendiente(idCronograma, req, auth.getName())
+        );
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PutMapping("/{idCronograma}/aprobar-interivalle")
+    public ResponseEntity<CronogramaResponse> aprobarCronogramaInterValle(
+            @PathVariable Integer idCronograma,
+            Authentication auth) {
+        return ResponseEntity.ok(
+                cronogramaService.aprobarCronogramaInterValle(idCronograma, auth.getName())
+        );
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")

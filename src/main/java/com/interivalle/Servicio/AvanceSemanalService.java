@@ -212,6 +212,14 @@ public class AvanceSemanalService {
         Cronograma cronograma = cronogramaRepo.findById(req.getIdCronograma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cronograma no encontrado"));
 
+        if (cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_EMPRESA
+                || cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_INTERIVALLE) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El seguimiento inicia cuando InterValle apruebe el cronograma"
+            );
+        }
+
         int totalSemanas = obtenerTotalSemanasCalculo(cronograma);
 
         if (totalSemanas <= 0) {
@@ -564,6 +572,15 @@ public class AvanceSemanalService {
 
     private void actualizarCronograma(Cronograma cronograma, BigDecimal porcentajeGeneral) {
         cronograma.setAvanceGeneral(porcentajeGeneral);
+
+        if (cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_EMPRESA
+                || cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_INTERIVALLE) {
+            // Ningun avance debe convertir a EN_PROCESO un cronograma pendiente de aprobacion interna.
+            cronograma.setEstado(cronograma.getEstadoCronograma().name());
+            cronogramaRepo.save(cronograma);
+            return;
+        }
+
         cronograma.setEstado(determinarEstadoCronograma(porcentajeGeneral));
         cronograma.setEstadoCronograma(determinarEstadoCronogramaEnum(porcentajeGeneral));
         cronogramaRepo.save(cronograma);

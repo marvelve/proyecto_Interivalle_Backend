@@ -11,6 +11,8 @@ public interface SolicitudServiciosRepositorio extends JpaRepository<SolicitudSe
 
     List<SolicitudServicios> findBySolicitud_IdSolicitud(Integer idSolicitud);
 
+    void deleteBySolicitud_IdSolicitud(Integer idSolicitud);
+
     // Verifica si un proyecto ya tiene una solicitud con el mismo servicio.
     @Query("""
         SELECT COUNT(ss)

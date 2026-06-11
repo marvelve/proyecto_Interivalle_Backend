@@ -13,6 +13,8 @@ public enum EstadoCotizacion {
 
     GENERADA,
     ENVIADA,
+    APROBADA_CLIENTE,
+    APROBADA_FINAL,
     APROBADA,
     RECHAZADA,
     EN_REVISION;

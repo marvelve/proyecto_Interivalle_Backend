@@ -133,6 +133,15 @@ public class CotizacionBaseV2Service {
 
     @Transactional
     public Cotizacion actualizarCotizacionBaseV2(Integer idCotizacion, GenerarCotizacionBaseRequest request) {
+        return actualizarCotizacionBaseV2(idCotizacion, request, false);
+    }
+
+    @Transactional
+    public Cotizacion actualizarCotizacionBaseV2(
+            Integer idCotizacion,
+            GenerarCotizacionBaseRequest request,
+            boolean permitirAprobadaPendienteInterivalle
+    ) {
         // Para editar se recalculan los detalles usando la misma solicitud de la cotizacion.
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar los datos de la cotizacion base");
@@ -144,7 +153,7 @@ public class CotizacionBaseV2Service {
                         "Cotizacion no encontrada"
                 ));
 
-        validarCotizacionEditable(cotizacion);
+        validarCotizacionEditable(cotizacion, permitirAprobadaPendienteInterivalle);
 
         Solicitud solicitud = cotizacion.getSolicitud();
         if (solicitud == null) {
@@ -598,9 +607,11 @@ public class CotizacionBaseV2Service {
         }
     }
 
-    private void validarCotizacionEditable(Cotizacion cotizacion) {
-        // Una cotizacion cerrada no debe recalcularse.
+    private void validarCotizacionEditable(Cotizacion cotizacion, boolean permitirAprobadaPendienteInterivalle) {
+        // InterValle puede ajustar una cotizacion aprobada por cliente hasta emitir su aprobacion interna.
         if (cotizacion.getEstado() == EstadoCotizacion.APROBADA
+                || cotizacion.getEstado() == EstadoCotizacion.APROBADA_CLIENTE
+                || cotizacion.getEstado() == EstadoCotizacion.APROBADA_FINAL
                 || cotizacion.getEstado() == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,

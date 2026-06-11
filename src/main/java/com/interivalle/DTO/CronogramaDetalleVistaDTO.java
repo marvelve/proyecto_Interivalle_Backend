@@ -12,6 +12,7 @@ package com.interivalle.DTO;
 public class CronogramaDetalleVistaDTO {
 
     private Integer idDetalle;
+    private String servicio;
     private String actividad;
     private String descripcion;
     private Integer semana;
@@ -26,6 +27,14 @@ public class CronogramaDetalleVistaDTO {
 
     public void setIdDetalle(Integer idDetalle) {
         this.idDetalle = idDetalle;
+    }
+
+    public String getServicio() {
+        return servicio;
+    }
+
+    public void setServicio(String servicio) {
+        this.servicio = servicio;
     }
 
     public String getActividad() {

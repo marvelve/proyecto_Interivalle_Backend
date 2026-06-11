@@ -26,6 +26,8 @@ public class CotizacionResponse {
 
     private TipoCotizacion tipo;
     private EstadoCotizacion estado;
+    private Boolean aprobadaInterivalle;
+    private LocalDateTime fechaAprobacionInterivalle;
 
     private BigDecimal totalManoObra;
     private BigDecimal totalMateriales;
@@ -83,6 +85,22 @@ public class CotizacionResponse {
 
     public void setEstado(EstadoCotizacion estado) {
         this.estado = estado;
+    }
+
+    public Boolean getAprobadaInterivalle() {
+        return aprobadaInterivalle;
+    }
+
+    public void setAprobadaInterivalle(Boolean aprobadaInterivalle) {
+        this.aprobadaInterivalle = aprobadaInterivalle;
+    }
+
+    public LocalDateTime getFechaAprobacionInterivalle() {
+        return fechaAprobacionInterivalle;
+    }
+
+    public void setFechaAprobacionInterivalle(LocalDateTime fechaAprobacionInterivalle) {
+        this.fechaAprobacionInterivalle = fechaAprobacionInterivalle;
     }
 
     public BigDecimal getTotalManoObra() {

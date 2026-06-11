@@ -8,6 +8,7 @@ public class CotizacionBaseFormularioResponse {
     private Integer solicitudId;
     private String nombreProyecto;
     private String estado;
+    private Boolean aprobadaInterivalle;
 
     // Servicios que activan las secciones del formulario en el frontend.
     private List<SolicitudServicioItem> serviciosSeleccionados;
@@ -47,6 +48,14 @@ public class CotizacionBaseFormularioResponse {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public Boolean getAprobadaInterivalle() {
+        return aprobadaInterivalle;
+    }
+
+    public void setAprobadaInterivalle(Boolean aprobadaInterivalle) {
+        this.aprobadaInterivalle = aprobadaInterivalle;
     }
 
     public List<SolicitudServicioItem> getServiciosSeleccionados() {

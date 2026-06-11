@@ -1,6 +1,7 @@
 package com.interivalle.DTO;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -14,6 +15,8 @@ public class CotizacionVistaCompletaResponse {
     private Integer idCotizacion;
     private String nombreProyecto;
     private String estado;
+    private Boolean aprobadaInterivalle;
+    private LocalDateTime fechaAprobacionInterivalle;
     private Double medidaAreaPrivada;
     private List<String> serviciosSeleccionados;
     private Boolean cronogramaGenerado;
@@ -53,6 +56,22 @@ public class CotizacionVistaCompletaResponse {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public Boolean getAprobadaInterivalle() {
+        return aprobadaInterivalle;
+    }
+
+    public void setAprobadaInterivalle(Boolean aprobadaInterivalle) {
+        this.aprobadaInterivalle = aprobadaInterivalle;
+    }
+
+    public LocalDateTime getFechaAprobacionInterivalle() {
+        return fechaAprobacionInterivalle;
+    }
+
+    public void setFechaAprobacionInterivalle(LocalDateTime fechaAprobacionInterivalle) {
+        this.fechaAprobacionInterivalle = fechaAprobacionInterivalle;
     }
 
     public Double getMedidaAreaPrivada() {

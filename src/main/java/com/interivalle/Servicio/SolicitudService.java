@@ -19,8 +19,10 @@ import com.interivalle.Repositorio.VisitaTecnicaRepositorio;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -110,9 +112,59 @@ public class SolicitudService {
     }
 
     @Transactional
+    public SolicitudResponse actualizarServiciosCotizacionBase(Integer idSolicitud, CrearSolicitud dto) {
+        validarDatosGenerales(dto);
+        validarDatosCotizacionBase(dto);
+
+        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (!TIPO_COTIZACION_BASE.equalsIgnoreCase(solicitud.getTipoSolicitud())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Solo se pueden actualizar servicios de solicitudes de cotizacion base"
+            );
+        }
+
+        if (!ESTADO_PENDIENTE.equalsIgnoreCase(solicitud.getEstado())
+                && !ESTADO_GENERADA.equalsIgnoreCase(solicitud.getEstado())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Solo se pueden actualizar servicios antes de aprobar la cotizacion"
+            );
+        }
+
+        String correoSolicitud = solicitud.getUsuario() != null
+                ? solicitud.getUsuario().getCorreoUsuario()
+                : null;
+
+        if (correoSolicitud == null || !correoSolicitud.equalsIgnoreCase(dto.getCorreoUsuario())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "No puede modificar una solicitud que no le pertenece"
+            );
+        }
+
+        solicitud.setNombreProyectoUsuario(dto.getNombreProyecto().trim());
+        solicitud.setTipoSolicitud(TIPO_COTIZACION_BASE);
+        solicitudRepo.save(solicitud);
+
+        // Reemplaza los servicios de la misma solicitud para permitir agregar o quitar antes de generar la cotizacion.
+        solicitudServicioRepo.deleteBySolicitud_IdSolicitud(idSolicitud);
+        solicitudServicioRepo.flush();
+        guardarServiciosCotizacion(dto, solicitud);
+
+        return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+    }
+
+    @Transactional
     public SolicitudResponse generarCotizacion(Integer idSolicitud) {
         Solicitud solicitud = solicitudRepo.findById(idSolicitud)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        if (ESTADO_GENERADA.equalsIgnoreCase(solicitud.getEstado())) {
+            return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+        }
 
         // Solo se genera cotizacion desde solicitudes pendientes.
         if (!ESTADO_PENDIENTE.equalsIgnoreCase(solicitud.getEstado())) {
@@ -367,7 +419,9 @@ public class SolicitudService {
     }
 
     private void guardarServiciosCotizacion(CrearSolicitud dto, Solicitud solicitud) {
-        for (Integer idServicio : dto.getServicios()) {
+        Set<Integer> serviciosUnicos = new LinkedHashSet<>(dto.getServicios());
+
+        for (Integer idServicio : serviciosUnicos) {
             // Valida que no exista el mismo servicio para el mismo proyecto.
             long existe = solicitudServicioRepo.existeServicioEnProyecto(
                     dto.getCorreoUsuario(),

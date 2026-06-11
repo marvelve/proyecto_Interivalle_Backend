@@ -258,7 +258,10 @@ public class ObraBlancaService {
         }
 
         EstadoCotizacion estado = cotizacion.getCotizacion().getEstado();
-        if (estado == EstadoCotizacion.APROBADA || estado == EstadoCotizacion.RECHAZADA) {
+        if (estado == EstadoCotizacion.APROBADA
+                || estado == EstadoCotizacion.APROBADA_CLIENTE
+                || estado == EstadoCotizacion.APROBADA_FINAL
+                || estado == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "La cotizacion no se puede modificar porque esta en estado " + estado.name()

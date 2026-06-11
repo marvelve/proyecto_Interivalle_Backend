@@ -36,7 +36,7 @@ public class Cotizacion {
     private TipoCotizacion tipo;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false)
+    @Column(name = "estado", nullable = false, length = 40)
     private EstadoCotizacion estado = EstadoCotizacion.GENERADA;
 
     // Totales separados (según tus imágenes)
@@ -72,6 +72,12 @@ public class Cotizacion {
     @Column(name = "fecha_aprobacion")
     private LocalDateTime fechaAprobacion;
 
+    @Column(name = "aprobada_interivalle", nullable = false)
+    private Boolean aprobadaInterivalle = false;
+
+    @Column(name = "fecha_aprobacion_interivalle")
+    private LocalDateTime fechaAprobacionInterivalle;
+
     // Evitar ciclos JSON si por error serializas entidades
     @JsonIgnore
     @OneToMany(mappedBy = "cotizacion", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -94,6 +100,7 @@ public class Cotizacion {
         if (this.totalProductos == null) this.totalProductos = BigDecimal.ZERO;
         if (this.totalEstimado == null) this.totalEstimado = BigDecimal.ZERO;
         if (this.estado == null) this.estado = EstadoCotizacion.GENERADA;
+        if (this.aprobadaInterivalle == null) this.aprobadaInterivalle = false;
     }
 
     @PreUpdate
@@ -160,6 +167,22 @@ public class Cotizacion {
 
     public void setFechaAprobacion(LocalDateTime fechaAprobacion) {
         this.fechaAprobacion = fechaAprobacion;
+    }
+
+    public Boolean getAprobadaInterivalle() {
+        return aprobadaInterivalle;
+    }
+
+    public void setAprobadaInterivalle(Boolean aprobadaInterivalle) {
+        this.aprobadaInterivalle = aprobadaInterivalle;
+    }
+
+    public LocalDateTime getFechaAprobacionInterivalle() {
+        return fechaAprobacionInterivalle;
+    }
+
+    public void setFechaAprobacionInterivalle(LocalDateTime fechaAprobacionInterivalle) {
+        this.fechaAprobacionInterivalle = fechaAprobacionInterivalle;
     }
     
     

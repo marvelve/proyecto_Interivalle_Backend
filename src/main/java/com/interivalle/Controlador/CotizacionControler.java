@@ -103,13 +103,37 @@ public class CotizacionControler {
         validarAdminSupervisor(authentication, "No tiene permisos para gestionar esta cotizacion");
 
         // Actualiza la cotizacion base y recalcula sus detalles.
-        Cotizacion cotizacion = cotizacionBaseV2Service.actualizarCotizacionBaseV2(idCotizacion, req);
+        Cotizacion cotizacion = cotizacionBaseV2Service.actualizarCotizacionBaseV2(idCotizacion, req, true);
 
         return construirCotizacionBaseResponse(
                 cotizacion,
                 req,
                 "Cotizacion base actualizada correctamente con catalogo V2"
         );
+    }
+
+    @PutMapping("/{idCotizacion}/aprobar-interivalle")
+    public CotizacionResponse aprobarInterivalle(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication
+    ) {
+        Usuario usuario = validarAdminSupervisor(
+                authentication,
+                "No tiene permisos para aprobar internamente esta cotizacion"
+        );
+        return cotizacionService.aprobarInterivalle(usuario.getIdUsuario(), idCotizacion);
+    }
+
+    @PutMapping("/{idCotizacion}/devolver-revision")
+    public CotizacionResponse devolverARevision(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication
+    ) {
+        Usuario usuario = validarAdminSupervisor(
+                authentication,
+                "No tiene permisos para devolver esta cotizacion a revision"
+        );
+        return cotizacionService.devolverARevision(usuario.getIdUsuario(), idCotizacion);
     }
 
     private Usuario validarAdminSupervisor(Authentication authentication, String mensajePermiso) {

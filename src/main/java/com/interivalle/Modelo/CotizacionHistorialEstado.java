@@ -28,11 +28,11 @@ public class CotizacionHistorialEstado {
     private Cotizacion cotizacion;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_anterior", nullable = false)
+    @Column(name = "estado_anterior", nullable = false, length = 40)
     private EstadoCotizacion estadoAnterior;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_nuevo", nullable = false)
+    @Column(name = "estado_nuevo", nullable = false, length = 40)
     private EstadoCotizacion estadoNuevo;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

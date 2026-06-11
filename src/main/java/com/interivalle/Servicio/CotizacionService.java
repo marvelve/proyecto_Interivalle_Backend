@@ -40,6 +40,7 @@ import com.interivalle.Modelo.Solicitud;
 import com.interivalle.Modelo.SolicitudServicios;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Modelo.enums.EstadoCotizacion;
+import com.interivalle.Modelo.enums.EstadoCronograma;
 import com.interivalle.Modelo.enums.ModuloNotificacion;
 import com.interivalle.Modelo.enums.TipoCotizacion;
 import com.interivalle.Modelo.enums.TipoItemCotizacion;
@@ -233,6 +234,27 @@ public class CotizacionService {
         );
     }
 
+    private void notificarCotizacionDevueltaACliente(Cotizacion cotizacion) {
+        if (cotizacion == null || cotizacion.getSolicitud() == null || cotizacion.getSolicitud().getUsuario() == null) {
+            return;
+        }
+
+        Usuario cliente = cotizacion.getSolicitud().getUsuario();
+        String nombreProyecto = textoNotificacion(cotizacion.getSolicitud().getNombreProyectoUsuario());
+        String titulo = "Cotizacion devuelta para revision";
+        String mensaje = "La cotizacion #" + cotizacion.getIdCotizacion()
+                + " del proyecto '" + nombreProyecto + "' fue devuelta para revision.";
+
+        notificacionService.crearNotificacion(
+                cliente,
+                TipoNotificacion.COTIZACION_DEVUELTA_REVISION,
+                ModuloNotificacion.COTIZACION,
+                titulo,
+                mensaje,
+                cotizacion.getIdCotizacion()
+        );
+    }
+
     private String textoNotificacion(String valor) {
         return valor == null || valor.isBlank() ? "-" : valor.trim();
     }
@@ -299,6 +321,73 @@ public class CotizacionService {
 
     // APROBAR
     @Transactional
+    public CotizacionResponse aprobarInterivalle(Integer idUsuario, Integer idCotizacion) {
+        Usuario usuario = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!Integer.valueOf(1).equals(usuario.getIdRol()) && !Integer.valueOf(2).equals(usuario.getIdRol())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN o SUPERVISOR pueden aprobar internamente la cotizacion");
+        }
+
+        Cotizacion cot = cotizacionRepo.findById(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotizacion no encontrada"));
+
+        if (cot.getEstado() != EstadoCotizacion.APROBADA_CLIENTE && cot.getEstado() != EstadoCotizacion.APROBADA) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "La cotizacion debe estar aprobada por el cliente antes de la aprobacion InterValle"
+            );
+        }
+
+        if (Boolean.TRUE.equals(cot.getAprobadaInterivalle())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La cotizacion ya fue aprobada por InterValle");
+        }
+
+        // Compatibilidad: esta aprobacion interna antigua ahora equivale al cierre final de cotizacion.
+        cot.setAprobadaInterivalle(true);
+        cot.setFechaAprobacionInterivalle(LocalDateTime.now());
+        cot.setEstado(EstadoCotizacion.APROBADA_FINAL);
+        cot = cotizacionRepo.save(cot);
+
+        guardarObservacion(cot, usuario, TipoObservacion.APROBACION, "Aprobada internamente por InterValle");
+        return toResponseCompleto(cot);
+    }
+
+    @Transactional
+    public CotizacionResponse devolverARevision(Integer idUsuario, Integer idCotizacion) {
+        Usuario usuario = usuarioRepo.findById(idUsuario)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!Integer.valueOf(1).equals(usuario.getIdRol()) && !Integer.valueOf(2).equals(usuario.getIdRol())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN o SUPERVISOR pueden devolver la cotizacion a revision");
+        }
+
+        Cotizacion cot = cotizacionRepo.findById(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cotizacion no encontrada"));
+
+        if (cot.getEstado() != EstadoCotizacion.APROBADA_CLIENTE && cot.getEstado() != EstadoCotizacion.APROBADA) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se puede devolver a revision una cotizacion aprobada por el cliente");
+        }
+
+        Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(idCotizacion).orElse(null);
+        if (cronograma != null && cronograma.getEstadoCronograma() != EstadoCronograma.EN_PROCESO
+                && cronograma.getEstadoCronograma() != EstadoCronograma.FINALIZADO) {
+            cronogramaRepo.delete(cronograma);
+        }
+
+        EstadoCotizacion anterior = cot.getEstado();
+        cot.setEstado(EstadoCotizacion.EN_REVISION);
+        cot.setAprobadaInterivalle(false);
+        cot.setFechaAprobacionInterivalle(null);
+        cot = cotizacionRepo.save(cot);
+
+        guardarObservacion(cot, usuario, TipoObservacion.COMENTARIO, "Cotizacion devuelta a revision por InterValle");
+        guardarHistorial(cot, anterior, EstadoCotizacion.EN_REVISION, usuario);
+        notificarCotizacionDevueltaACliente(cot);
+        return toResponseCompleto(cot);
+    }
+
+    @Transactional
     public CotizacionResponse aprobar(Integer idUsuario, Integer idCotizacion, AprobarCotizacionRequest req) {
         Usuario usuario = usuarioRepo.findById(idUsuario)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
@@ -321,12 +410,14 @@ public class CotizacionService {
 
         EstadoCotizacion anterior = cot.getEstado();
 
-        cot.setEstado(EstadoCotizacion.APROBADA);
+        cot.setEstado(EstadoCotizacion.APROBADA_CLIENTE);
+        cot.setAprobadaInterivalle(false);
+        cot.setFechaAprobacionInterivalle(null);
         cot.setFechaAprobacion(LocalDateTime.now());
         cot = cotizacionRepo.save(cot);
 
         guardarObservacion(cot, usuario, TipoObservacion.APROBACION, req.getMensaje());
-        guardarHistorial(cot, anterior, EstadoCotizacion.APROBADA, usuario);
+        guardarHistorial(cot, anterior, EstadoCotizacion.APROBADA_CLIENTE, usuario);
 
         notificarCotizacionAprobadaASupervisores(cot);
         cronogramaServicio.crearDesdeCotizacionAprobada(cot.getIdCotizacion(), req.getFechaInicio());
@@ -2306,6 +2397,8 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
 
         r.setTipo(cot.getTipo());
         r.setEstado(cot.getEstado());
+        r.setAprobadaInterivalle(Boolean.TRUE.equals(cot.getAprobadaInterivalle()));
+        r.setFechaAprobacionInterivalle(cot.getFechaAprobacionInterivalle());
 
         r.setTotalManoObra(cot.getTotalManoObra());
         r.setTotalMateriales(cot.getTotalMateriales());
@@ -2560,6 +2653,8 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
     resp.setIdCotizacion(cot.getIdCotizacion());
     resp.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
     resp.setEstado(cot.getEstado().name());
+    resp.setAprobadaInterivalle(Boolean.TRUE.equals(cot.getAprobadaInterivalle()));
+    resp.setFechaAprobacionInterivalle(cot.getFechaAprobacionInterivalle());
     resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
     resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
     Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion()).orElse(null);
@@ -2625,6 +2720,9 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
         resp.setIdCotizacion(cot.getIdCotizacion());
         resp.setNombreProyecto(cot.getSolicitud().getNombreProyectoUsuario());
         resp.setEstado(cot.getEstado().name());
+        resp.setAprobadaInterivalle(Boolean.TRUE.equals(cot.getAprobadaInterivalle()));
+        resp.setAprobadaInterivalle(Boolean.TRUE.equals(cot.getAprobadaInterivalle()));
+        resp.setFechaAprobacionInterivalle(cot.getFechaAprobacionInterivalle());
         resp.setMedidaAreaPrivada(obtenerMedidaAreaPrivadaCotizacion(cot.getIdCotizacion()));
         resp.setServiciosSeleccionados(obtenerNombresServiciosCotizacion(cot));
         Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(cot.getIdCotizacion()).orElse(null);
@@ -2653,6 +2751,8 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
         }
 
         if (cotizacion.getEstado() == EstadoCotizacion.APROBADA ||
+            cotizacion.getEstado() == EstadoCotizacion.APROBADA_CLIENTE ||
+            cotizacion.getEstado() == EstadoCotizacion.APROBADA_FINAL ||
             cotizacion.getEstado() == EstadoCotizacion.RECHAZADA) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,

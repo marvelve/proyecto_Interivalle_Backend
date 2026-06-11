@@ -9,6 +9,8 @@ package com.interivalle.Modelo.enums;
  * @author mary_
  */
 public enum EstadoCronograma {
+    PENDIENTE_APROBACION_EMPRESA,
+    PENDIENTE_APROBACION_INTERIVALLE,
     EN_PROCESO,
     FINALIZADO
 }

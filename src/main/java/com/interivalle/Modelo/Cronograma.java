@@ -42,7 +42,7 @@ public class Cronograma {
     private Integer totalSemanas;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "estado_cronograma", nullable = false, length = 20)
+    @Column(name = "estado_cronograma", nullable = false, length = 50)
     private EstadoCronograma estadoCronograma;
 
     @OneToMany(mappedBy = "cronograma", cascade = CascadeType.ALL, orphanRemoval = true)

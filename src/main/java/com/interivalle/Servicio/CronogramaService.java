@@ -5,6 +5,7 @@
 package com.interivalle.Servicio;
 
 import com.interivalle.DTO.ActualizarCronogramaDetalleRequest;
+import com.interivalle.DTO.ActualizarCronogramaPendienteRequest;
 import com.interivalle.DTO.CrearCronogramaRequest;
 import com.interivalle.DTO.CronogramaDetalleVistaDTO;
 import com.interivalle.DTO.CronogramaListResponse;
@@ -25,6 +26,7 @@ import com.interivalle.Modelo.Solicitud;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Modelo.Vidrio;
 import com.interivalle.Modelo.enums.EstadoActividadCronograma;
+import com.interivalle.Modelo.enums.EstadoCotizacion;
 import com.interivalle.Modelo.enums.EstadoCronograma;
 import com.interivalle.Modelo.enums.TipoItemCotizacion;
 import com.interivalle.Repositorio.CarpinteriaPersonalizadaRepositorio;
@@ -43,6 +45,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -110,7 +113,7 @@ public class CronogramaService {
         CronogramaVistaResponse response = new CronogramaVistaResponse();
         response.setIdCronograma(cronograma.getIdCronograma());
         response.setIdCotizacion(cotizacion.getIdCotizacion());
-        response.setEstadoCronograma(cronograma.getEstadoCronograma()!= null ? cronograma.getEstadoCronograma().name() : "EN_PROCESO");
+        response.setEstadoCronograma(cronograma.getEstadoCronograma()!= null ? cronograma.getEstadoCronograma().name() : "PENDIENTE_APROBACION_EMPRESA");
         response.setFechaInicio(cronograma.getFechaInicio());
         response.setFechaFin(cronograma.getFechaFinEstimada());
 
@@ -248,6 +251,7 @@ public class CronogramaService {
     private CronogramaDetalleVistaDTO mapearDetalleVista(CronogramaDetalle d) {
         CronogramaDetalleVistaDTO dto = new CronogramaDetalleVistaDTO();
         dto.setIdDetalle(d.getIdCronogramaDetalle());
+        dto.setServicio(d.getServicio());
         dto.setActividad(d.getActividad());
         dto.setDescripcion(d.getDescripcion());
         dto.setSemana(d.getSemana());
@@ -256,6 +260,122 @@ public class CronogramaService {
         dto.setPorcentaje(d.getPorcentaje() != null ? d.getPorcentaje().intValue() : 0);
         dto.setNovedades(d.getNovedades());
         return dto;
+    }
+
+    @Transactional
+    public CronogramaVistaResponse actualizarCronogramaPendiente(
+            Integer idCronograma,
+            ActualizarCronogramaPendienteRequest req,
+            String correoUsuario
+    ) {
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(correoUsuario)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!Integer.valueOf(1).equals(usuario.getIdRol()) && !Integer.valueOf(2).equals(usuario.getIdRol())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN o SUPERVISOR pueden editar el cronograma");
+        }
+
+        Cronograma cronograma = cronogramaRepo.findById(idCronograma)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cronograma no encontrado"));
+
+        if (cronograma.getEstadoCronograma() != EstadoCronograma.PENDIENTE_APROBACION_EMPRESA
+                && cronograma.getEstadoCronograma() != EstadoCronograma.PENDIENTE_APROBACION_INTERIVALLE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Solo se puede editar el cronograma antes de la aprobacion InterValle"
+            );
+        }
+
+        if (req == null || req.getFechaInicio() == null || req.getTotalSemanas() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Fecha inicio y total de semanas son obligatorios");
+        }
+
+        if (req.getTotalSemanas() <= 0 || req.getTotalSemanas() > 52) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El total de semanas debe estar entre 1 y 52");
+        }
+
+        if (req.getDetalles() == null || req.getDetalles().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cronograma debe tener al menos una actividad");
+        }
+
+        LocalDate inicioPlanificado = ajustarFechaInicioObra(req.getFechaInicio());
+        validarFechaInicioDisponibleParaEdicion(cronograma, inicioPlanificado);
+
+        cronograma.setFechaInicio(inicioPlanificado);
+        cronograma.setFechaInicioPlanificada(inicioPlanificado);
+        cronograma.setTotalSemanas(req.getTotalSemanas());
+        cronograma.setFechaFinEstimada(inicioPlanificado.plusWeeks(req.getTotalSemanas() - 1).plusDays(5));
+
+        List<CronogramaDetalle> actuales = cronogramaDetalleRepo
+                .findByCronograma_IdCronogramaOrderBySemanaAsc(idCronograma);
+        Set<Integer> idsConservados = new HashSet<>();
+
+        for (ActualizarCronogramaPendienteRequest.DetallePendiente item : req.getDetalles()) {
+            Integer semana = item.getSemana();
+            if (semana == null || semana <= 0 || semana > req.getTotalSemanas()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Cada actividad debe tener una semana entre 1 y " + req.getTotalSemanas()
+                );
+            }
+
+            String actividad = limpiarTexto(item.getActividad());
+            if (actividad == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Todas las actividades deben tener nombre");
+            }
+
+            CronogramaDetalle detalle = null;
+            if (item.getIdDetalle() != null) {
+                detalle = actuales.stream()
+                        .filter(actual -> item.getIdDetalle().equals(actual.getIdCronogramaDetalle()))
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "La actividad no pertenece a este cronograma"
+                        ));
+                idsConservados.add(detalle.getIdCronogramaDetalle());
+            }
+
+            if (detalle == null) {
+                detalle = new CronogramaDetalle();
+                detalle.setCronograma(cronograma);
+                detalle.setEstadoActividad(EstadoActividadCronograma.PENDIENTE);
+                detalle.setPorcentaje(BigDecimal.ZERO);
+            }
+
+            detalle.setServicio(textoPrincipal(item.getServicio(), "Cronograma", "Cronograma"));
+            detalle.setActividad(actividad);
+            detalle.setDescripcion(limpiarTexto(item.getDescripcion()));
+            detalle.setSemana(semana);
+            detalle.setFechaInicioSemana(inicioPlanificado.plusWeeks(semana - 1));
+            detalle.setFechaFinSemana(detalle.getFechaInicioSemana().plusDays(5));
+            detalle.setTrabajadorAsignado(null);
+            detalle.setNovedades(null);
+            CronogramaDetalle guardado = cronogramaDetalleRepo.save(detalle);
+            idsConservados.add(guardado.getIdCronogramaDetalle());
+        }
+
+        for (CronogramaDetalle detalle : actuales) {
+            if (!idsConservados.contains(detalle.getIdCronogramaDetalle())) {
+                cronogramaDetalleRepo.delete(detalle);
+            }
+        }
+
+        cronogramaRepo.save(cronograma);
+        // Se retorna la vista completa para refrescar semanas y actividades recalculadas.
+        return obtenerVistaPorCotizacion(cronograma.getCotizacion().getIdCotizacion());
+    }
+
+    private void validarFechaInicioDisponibleParaEdicion(Cronograma cronograma, LocalDate fechaInicio) {
+        if (fechaInicio == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de inicio es obligatoria");
+        }
+
+        if (fechaInicio.equals(cronograma.getFechaInicio())) {
+            return;
+        }
+
+        validarFechaInicioDisponible(fechaInicio);
     }
 
     @Transactional
@@ -389,6 +509,13 @@ public class CronogramaService {
 
         List<AvanceSemanal> avances = avanceSemanalRepo
                 .findByCronograma_IdCronogramaOrderByNumeroSemanaAsc(cronograma.getIdCronograma());
+
+        if (cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_EMPRESA
+                || cronograma.getEstadoCronograma() == EstadoCronograma.PENDIENTE_APROBACION_INTERIVALLE) {
+            // El cronograma aprobado por el cliente no inicia obra hasta la validacion interna.
+            cronogramaRepo.save(cronograma);
+            return;
+        }
 
         if (avances == null || avances.isEmpty()) {
             cronogramaRepo.save(cronograma);
@@ -568,9 +695,9 @@ public class CronogramaService {
                 inicioPlanificado.plusWeeks(totalSemanasEstimado - 1).plusDays(5)
         );
 
-        if (cronograma.getEstadoCronograma() == null) {
-            cronograma.setEstadoCronograma(EstadoCronograma.EN_PROCESO);
-        }
+        // La aprobacion del cliente solo deja la programacion lista para revision interna.
+        cronograma.setEstadoCronograma(EstadoCronograma.PENDIENTE_APROBACION_EMPRESA);
+        cronograma.setEstado(EstadoCronograma.PENDIENTE_APROBACION_EMPRESA.name());
 
         Cronograma guardado = cronogramaRepo.save(cronograma);
 
@@ -634,9 +761,56 @@ public class CronogramaService {
         response.setEstadoCronograma(
                 guardado.getEstadoCronograma() != null
                         ? guardado.getEstadoCronograma().name()
-                        : "EN_PROCESO"
+                        : "PENDIENTE_APROBACION_EMPRESA"
         );
 
+        return response;
+    }
+
+    @Transactional
+    public CronogramaResponse aprobarCronogramaInterValle(Integer idCronograma, String correoUsuario) {
+        Usuario usuario = usuarioRepo.findByCorreoUsuario(correoUsuario)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!Integer.valueOf(1).equals(usuario.getIdRol()) && !Integer.valueOf(2).equals(usuario.getIdRol())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN o SUPERVISOR pueden aprobar el cronograma");
+        }
+
+        Cronograma cronograma = cronogramaRepo.findById(idCronograma)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cronograma no encontrado"));
+
+        if (cronograma.getEstadoCronograma() != EstadoCronograma.PENDIENTE_APROBACION_EMPRESA
+                && cronograma.getEstadoCronograma() != EstadoCronograma.PENDIENTE_APROBACION_INTERIVALLE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Solo se pueden aprobar cronogramas pendientes de validacion InterValle"
+            );
+        }
+
+        // La aprobacion interna es el punto que inicia formalmente el seguimiento de obra.
+        cronograma.setEstadoCronograma(EstadoCronograma.EN_PROCESO);
+        cronograma.setEstado(EstadoCronograma.EN_PROCESO.name());
+        Cronograma guardado = cronogramaRepo.save(cronograma);
+
+        Cotizacion cotizacion = guardado.getCotizacion();
+        if (cotizacion != null) {
+            cotizacion.setEstado(EstadoCotizacion.APROBADA_FINAL);
+            cotizacion.setAprobadaInterivalle(true);
+            cotizacion.setFechaAprobacionInterivalle(java.time.LocalDateTime.now());
+            cotizacionRepo.save(cotizacion);
+        }
+
+        CronogramaResponse response = new CronogramaResponse();
+        response.setIdCronograma(guardado.getIdCronograma());
+        response.setIdCotizacion(
+                guardado.getCotizacion() != null ? guardado.getCotizacion().getIdCotizacion() : null
+        );
+        response.setFechaInicio(guardado.getFechaInicio());
+        response.setFechaInicioPlanificada(guardado.getFechaInicioPlanificada());
+        response.setFechaFinEstimada(guardado.getFechaFinEstimada());
+        response.setTotalSemanas(guardado.getTotalSemanas());
+        response.setEstadoCronograma(guardado.getEstadoCronograma().name());
+        response.setProyecto(obtenerNombreProyecto(guardado.getCotizacion()));
         return response;
     }
 

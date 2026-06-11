@@ -1,4 +1,5 @@
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\BackendLogin.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\config\DatabaseSchemaUpdater.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\configuracion\WebConfig.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ActividadController.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ActividadPersonalizadaControler.java
@@ -26,6 +27,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\Activid
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActualizarCronogramaDetalleRequest.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActualizarCronogramaPendienteRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActualizarPrecioCatalogoRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\AprobarCotizacionRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\AuthResponse.java

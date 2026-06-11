@@ -142,6 +142,16 @@ public class ClienteCotizacionControler {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{idCotizacion}/aprobar-interivalle")
+    public ResponseEntity<CotizacionResponse> aprobarInterivalle(
+            @PathVariable Integer idCotizacion,
+            Authentication authentication
+    ) {
+        Usuario usuario = obtenerUsuarioAutenticado(authentication);
+        CotizacionResponse response = cotizacionService.aprobarInterivalle(usuario.getIdUsuario(), idCotizacion);
+        return ResponseEntity.ok(response);
+    }
+
     private Usuario obtenerUsuarioAutenticado(Authentication authentication) {
         String correo = authentication.getName();
 

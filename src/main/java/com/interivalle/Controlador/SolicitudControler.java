@@ -51,6 +51,15 @@ public class SolicitudControler {
         return ResponseEntity.ok(service.obtenerSolicitud(idSolicitud));
     }
 
+    @PutMapping("/{idSolicitud}/servicios")
+    public ResponseEntity<SolicitudResponse> actualizarServiciosCotizacionBase(
+            @PathVariable Integer idSolicitud,
+            @RequestBody CrearSolicitud dto
+    ) {
+        // Permite corregir los servicios seleccionados antes de aprobar la cotizacion generada.
+        return ResponseEntity.ok(service.actualizarServiciosCotizacionBase(idSolicitud, dto));
+    }
+
     @GetMapping
     public List<SolicitudResponse> listarSolicitudes(
             @RequestParam(required = false) String correoUsuario
