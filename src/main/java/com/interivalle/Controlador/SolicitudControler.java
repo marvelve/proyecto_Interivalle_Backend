@@ -51,13 +51,21 @@ public class SolicitudControler {
         return ResponseEntity.ok(service.obtenerSolicitud(idSolicitud));
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @PutMapping("/{idSolicitud}/servicios")
     public ResponseEntity<SolicitudResponse> actualizarServiciosCotizacionBase(
             @PathVariable Integer idSolicitud,
-            @RequestBody CrearSolicitud dto
+            @RequestBody CrearSolicitud dto,
+            Authentication authentication
     ) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
+        }
+
         // Permite corregir los servicios seleccionados antes de aprobar la cotizacion generada.
-        return ResponseEntity.ok(service.actualizarServiciosCotizacionBase(idSolicitud, dto));
+        return ResponseEntity.ok(
+                service.actualizarServiciosCotizacionBase(idSolicitud, dto, authentication.getName())
+        );
     }
 
     @GetMapping

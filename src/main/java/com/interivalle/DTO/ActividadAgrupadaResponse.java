@@ -14,9 +14,19 @@ import java.util.List;
 
 public class ActividadAgrupadaResponse {
 
+    private Integer idDetalle;
     private String actividad;
+    private BigDecimal cantidadActividad;
     private BigDecimal precioActividad;
     private List<MaterialAgrupadoResponse> materiales;
+
+    public Integer getIdDetalle() {
+        return idDetalle;
+    }
+
+    public void setIdDetalle(Integer idDetalle) {
+        this.idDetalle = idDetalle;
+    }
 
     public String getActividad() {
         return actividad;
@@ -24,6 +34,14 @@ public class ActividadAgrupadaResponse {
 
     public void setActividad(String actividad) {
         this.actividad = actividad;
+    }
+
+    public BigDecimal getCantidadActividad() {
+        return cantidadActividad;
+    }
+
+    public void setCantidadActividad(BigDecimal cantidadActividad) {
+        this.cantidadActividad = cantidadActividad;
     }
 
     public BigDecimal getPrecioActividad() {

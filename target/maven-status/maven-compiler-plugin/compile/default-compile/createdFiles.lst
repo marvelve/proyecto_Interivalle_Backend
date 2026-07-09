@@ -1,4 +1,5 @@
 com\interivalle\DTO\RegisterRequest.class
+com\interivalle\Servicio\CotizacionService$TotalesCotizacionBase.class
 com\interivalle\Modelo\CatalogoItem.class
 com\interivalle\Modelo\ComentarioAvance.class
 com\interivalle\Repositorio\CarpinteriaRepositorio.class
@@ -13,6 +14,7 @@ com\interivalle\DTO\CotizacionPersonalizadaDetalleResponse.class
 com\interivalle\Modelo\Cronograma.class
 com\interivalle\DTO\CarpinteriaRequest.class
 com\interivalle\Modelo\CotizacionManoObra.class
+com\interivalle\Servicio\CotizacionBaseV2Service$TotalesCotizacionBaseV2.class
 com\interivalle\Repositorio\ActividadRepositorio.class
 com\interivalle\DTO\CronogramaVistaResponse.class
 com\interivalle\Modelo\Producto.class
@@ -22,6 +24,7 @@ com\interivalle\DTO\ActividadResponse.class
 com\interivalle\DTO\CrearCotizacionRequest$DetalleItem.class
 com\interivalle\Servicio\CarpinteriaService.class
 com\interivalle\Servicio\VidrioService.class
+com\interivalle\DTO\ActualizarCronogramaPendienteRequest.class
 com\interivalle\Modelo\CotizacionVidrio.class
 com\interivalle\Modelo\ActividadMaterialV2.class
 com\interivalle\DTO\AprobarCotizacionRequest.class
@@ -68,6 +71,7 @@ com\interivalle\Modelo\VisitaTecnica.class
 com\interivalle\DTO\MesonGranitoResponse.class
 com\interivalle\DTO\VidrioBaseRequest.class
 com\interivalle\Servicio\CotizacionPersonalizadaService.class
+com\interivalle\DTO\ActualizarCronogramaPendienteRequest$DetallePendiente.class
 com\interivalle\DTO\CrearCatalogoItemRequest.class
 com\interivalle\Controlador\CotizacionBaseV2Controler.class
 com\interivalle\DTO\CrearCotizacionRequest.class
@@ -83,6 +87,7 @@ com\interivalle\Controlador\EvidenciaAvanceControler.class
 com\interivalle\Repositorio\SolicitudServiciosRepositorio.class
 com\interivalle\Servicio\AvanceSemanalService.class
 com\interivalle\Modelo\CotizacionHistorialEstado.class
+com\interivalle\Servicio\AvanceSemanalService$ResultadoGuardado.class
 com\interivalle\Controlador\ClienteCotizacionControler.class
 com\interivalle\DTO\ObraBlancaResponse.class
 com\interivalle\DTO\CotizacionHistorialResponse.class
@@ -106,6 +111,7 @@ com\interivalle\DTO\GenerarCotizacionBaseRequest.class
 com\interivalle\Modelo\enums\EstadoCotizacion.class
 com\interivalle\DTO\UsuarioResponse.class
 com\interivalle\Modelo\CotizacionPersonalizada.class
+com\interivalle\config\DatabaseSchemaUpdater.class
 com\interivalle\Modelo\Cotizacion.class
 com\interivalle\Modelo\AvanceSemanal.class
 com\interivalle\DTO\CarpinteriaPersonalizadaRequest.class
@@ -138,6 +144,7 @@ com\interivalle\Modelo\ActividadPersonalizada.class
 com\interivalle\DTO\EvidenciaAvanceResponse.class
 com\interivalle\DTO\SolicitudRequest.class
 com\interivalle\Modelo\CotizacionCarpinteria.class
+com\interivalle\Servicio\CotizacionService.class
 com\interivalle\DTO\AvanceSemanalRequest.class
 com\interivalle\Controlador\CotizacionPersonalizadaControler.class
 com\interivalle\DTO\UsuarioCreateRequest.class

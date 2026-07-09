@@ -24,6 +24,8 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\TestControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\VidrioControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadAgrupadaResponse.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadMaterialV2Request.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadMaterialV2Response.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActividadResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ActualizarCronogramaDetalleRequest.java
@@ -61,6 +63,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\Cronogr
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\CronogramaListResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\CronogramaResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\CronogramaVistaResponse.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\EliminarActividadesCotizacionRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\EnviarSolicitud.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\EstadoUpdate.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\EvidenciaAvanceRequest.java

@@ -14,9 +14,36 @@ import java.math.BigDecimal;
 
 public class ActualizarPrecioCatalogoRequest {
 
+    private String nombreItem;
+    private String categoria;
+    private Integer idServicio;
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
     private Boolean activo;
+
+    public String getNombreItem() {
+        return nombreItem;
+    }
+
+    public void setNombreItem(String nombreItem) {
+        this.nombreItem = nombreItem;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
+
+    public Integer getIdServicio() {
+        return idServicio;
+    }
+
+    public void setIdServicio(Integer idServicio) {
+        this.idServicio = idServicio;
+    }
 
     public BigDecimal getPrecioUnitarioVenta() {
         return precioUnitarioVenta;

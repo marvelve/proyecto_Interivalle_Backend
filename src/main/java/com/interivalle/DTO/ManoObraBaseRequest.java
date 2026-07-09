@@ -17,6 +17,10 @@ public class ManoObraBaseRequest {
     @Max(value = 4, message = "La cantidad de baños solo puede ser 0, 1, 2, 3 o 4")
     private Integer cantidadBanos;
 
+    private Boolean requiereDemolerBano;
+
+    private Boolean requiereSobrepisoNivelacion;
+
     @NotBlank(message = "El tipo de cielo es obligatorio")
     private String tipoCielo; // DRYWALL o ESTUCO
 
@@ -45,6 +49,22 @@ public class ManoObraBaseRequest {
 
     public void setCantidadBanos(Integer cantidadBanos) {
         this.cantidadBanos = cantidadBanos;
+    }
+
+    public Boolean getRequiereDemolerBano() {
+        return requiereDemolerBano;
+    }
+
+    public void setRequiereDemolerBano(Boolean requiereDemolerBano) {
+        this.requiereDemolerBano = requiereDemolerBano;
+    }
+
+    public Boolean getRequiereSobrepisoNivelacion() {
+        return requiereSobrepisoNivelacion;
+    }
+
+    public void setRequiereSobrepisoNivelacion(Boolean requiereSobrepisoNivelacion) {
+        this.requiereSobrepisoNivelacion = requiereSobrepisoNivelacion;
     }
 
     public String getTipoCielo() {

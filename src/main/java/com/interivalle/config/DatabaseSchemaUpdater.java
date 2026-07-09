@@ -19,6 +19,10 @@ public class DatabaseSchemaUpdater {
         ejecutarAlterSeguro("ALTER TABLE cotizacion MODIFY estado VARCHAR(40) NOT NULL");
         ejecutarAlterSeguro("ALTER TABLE cotizacion_historial_estado MODIFY estado_anterior VARCHAR(40) NOT NULL");
         ejecutarAlterSeguro("ALTER TABLE cotizacion_historial_estado MODIFY estado_nuevo VARCHAR(40) NOT NULL");
+        ejecutarAlterSeguro("ALTER TABLE cotizacion_mano_obra ADD COLUMN requiere_demoler_bano BIT NULL");
+        ejecutarAlterSeguro("ALTER TABLE cotizacion_mano_obra ADD COLUMN requiere_sobrepiso_nivelacion BIT NULL");
+        ejecutarAlterSeguro("ALTER TABLE cotizacion_mano_obra ADD COLUMN cantidad_poyos INT NULL");
+        ejecutarAlterSeguro("ALTER TABLE cotizacion_mano_obra ADD COLUMN cantidad_puntos_electricos INT NULL");
     }
 
     private void ejecutarAlterSeguro(String sql) {

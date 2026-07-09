@@ -5,6 +5,7 @@ import com.interivalle.Modelo.MesonGranito;
 import com.interivalle.Servicio.MesonGranitoService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ public class MesonGranitoControler {
     @Autowired
     private MesonGranitoService mesonGranitoService;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PostMapping
     public MesonGranito guardar(@RequestBody MesonGranitoRequest req) {
         // Guarda un adicional de meson/marmol/granito.
@@ -39,11 +41,13 @@ public class MesonGranitoControler {
         return mesonGranitoService.obtenerPorId(id);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PutMapping("/{id}")
     public MesonGranito actualizar(@PathVariable Integer id, @RequestBody MesonGranitoRequest req) {
         return mesonGranitoService.actualizar(id, req);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         mesonGranitoService.eliminar(id);

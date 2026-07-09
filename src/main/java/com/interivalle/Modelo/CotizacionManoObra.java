@@ -29,11 +29,23 @@ public class CotizacionManoObra {
     @Column(name = "cantidad_banos", nullable = false)
     private Integer cantidadBanos;
 
+    @Column(name = "requiere_demoler_bano")
+    private Boolean requiereDemolerBano;
+
+    @Column(name = "requiere_sobrepiso_nivelacion")
+    private Boolean requiereSobrepisoNivelacion;
+
     @Column(name = "tipo_cielo", nullable = false, length = 30)
     private String tipoCielo;
 
     @Column(name = "division_pared", nullable = false)
     private Boolean divisionPared;
+
+    @Column(name = "cantidad_poyos")
+    private Integer cantidadPoyos;
+
+    @Column(name = "cantidad_puntos_electricos")
+    private Integer cantidadPuntosElectricos;
 
     public Integer getIdCotizacionManoObra() {
         return idCotizacionManoObra;
@@ -67,6 +79,22 @@ public class CotizacionManoObra {
         this.cantidadBanos = cantidadBanos;
     }
 
+    public Boolean getRequiereDemolerBano() {
+        return requiereDemolerBano;
+    }
+
+    public void setRequiereDemolerBano(Boolean requiereDemolerBano) {
+        this.requiereDemolerBano = requiereDemolerBano;
+    }
+
+    public Boolean getRequiereSobrepisoNivelacion() {
+        return requiereSobrepisoNivelacion;
+    }
+
+    public void setRequiereSobrepisoNivelacion(Boolean requiereSobrepisoNivelacion) {
+        this.requiereSobrepisoNivelacion = requiereSobrepisoNivelacion;
+    }
+
     public String getTipoCielo() {
         return tipoCielo;
     }
@@ -81,5 +109,21 @@ public class CotizacionManoObra {
 
     public void setDivisionPared(Boolean divisionPared) {
         this.divisionPared = divisionPared;
+    }
+
+    public Integer getCantidadPoyos() {
+        return cantidadPoyos;
+    }
+
+    public void setCantidadPoyos(Integer cantidadPoyos) {
+        this.cantidadPoyos = cantidadPoyos;
+    }
+
+    public Integer getCantidadPuntosElectricos() {
+        return cantidadPuntosElectricos;
+    }
+
+    public void setCantidadPuntosElectricos(Integer cantidadPuntosElectricos) {
+        this.cantidadPuntosElectricos = cantidadPuntosElectricos;
     }
 }

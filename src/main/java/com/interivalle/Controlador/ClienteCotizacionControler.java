@@ -59,6 +59,7 @@ public class ClienteCotizacionControler {
 
         // Valida que el cliente solo genere cotizacion de sus propias solicitudes.
         validarSolicitudPerteneceAlCliente(req.getSolicitudId(), usuario.getIdUsuario());
+        aplicarCantidadPoyosCliente(req);
 
         Cotizacion cotizacion = cotizacionBaseV2Service.generarCotizacionBaseV2(req);
 
@@ -121,6 +122,7 @@ public class ClienteCotizacionControler {
 
         // Valida pertenencia antes de permitir modificar la cotizacion base.
         validarCotizacionPerteneceAlCliente(idCotizacion, usuario.getIdUsuario());
+        aplicarCantidadPoyosCliente(req);
 
         Cotizacion cotizacion = cotizacionBaseV2Service.actualizarCotizacionBaseV2(idCotizacion, req);
 
@@ -129,6 +131,15 @@ public class ClienteCotizacionControler {
                 req,
                 "Cotizacion base actualizada correctamente con catalogo V2"
         );
+    }
+
+    private void aplicarCantidadPoyosCliente(GenerarCotizacionBaseRequest req) {
+        if (req == null || req.getManoObra() == null) {
+            return;
+        }
+
+        req.getManoObra().setCantidadPoyos(3);
+        req.getManoObra().setCantidadPuntosElectricos(4);
     }
 
     @PutMapping("/{idCotizacion}/aprobar")

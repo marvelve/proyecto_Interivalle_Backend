@@ -25,6 +25,8 @@ public interface CotizacionRepositorio extends JpaRepository<Cotizacion, Integer
 
     Optional<Cotizacion> findFirstBySolicitud_IdSolicitudAndEstado(Integer idSolicitud, EstadoCotizacion estado);
 
+    List<Cotizacion> findBySolicitud_IdSolicitud(Integer idSolicitud);
+
     List<Cotizacion> findBySolicitud_Usuario_IdUsuarioAndTipo(Integer idUsuario, TipoCotizacion tipo);
 
     List<Cotizacion> findBySolicitud_Usuario_IdUsuarioAndEstadoAndTipo(

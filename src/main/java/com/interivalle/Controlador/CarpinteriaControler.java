@@ -5,6 +5,7 @@ import com.interivalle.Modelo.Carpinteria;
 import com.interivalle.Servicio.CarpinteriaService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ public class CarpinteriaControler {
     @Autowired
     private CarpinteriaService carpinteriaService;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PostMapping
     public Carpinteria guardar(@RequestBody CarpinteriaRequest req) {
         // Guarda un adicional de carpinteria dentro de una cotizacion personalizada.
@@ -39,11 +41,13 @@ public class CarpinteriaControler {
         return carpinteriaService.obtenerPorId(id);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PutMapping("/{id}")
     public Carpinteria actualizar(@PathVariable Integer id, @RequestBody CarpinteriaRequest req) {
         return carpinteriaService.actualizar(id, req);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         carpinteriaService.eliminar(id);

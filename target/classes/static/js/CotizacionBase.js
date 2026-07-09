@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const serviciosSeleccionados = obtenerServiciosSeleccionados(solicitud);
     configurarSecciones(serviciosSeleccionados);
+    configurarPreguntaDemolicionBano();
 
     document.getElementById("nombreProyecto").textContent =
         solicitud.nombreProyecto ? `Proyecto: ${solicitud.nombreProyecto}` : "";
@@ -40,6 +41,29 @@ function obtenerSolicitudGuardada() {
     } catch (error) {
         return null;
     }
+}
+
+function configurarPreguntaDemolicionBano() {
+    const cantidadBanos = document.getElementById("manoCantidadBanos");
+    const grupoDemoler = document.getElementById("grupoManoRequiereDemoler");
+    const requiereDemoler = document.getElementById("manoRequiereDemoler");
+
+    if (!cantidadBanos || !grupoDemoler || !requiereDemoler) {
+        return;
+    }
+
+    const actualizarVisibilidad = () => {
+        const mostrar = Number(cantidadBanos.value || 0) === 1;
+        grupoDemoler.hidden = !mostrar;
+        requiereDemoler.disabled = !mostrar;
+        if (!mostrar) {
+            requiereDemoler.value = "false";
+        }
+    };
+
+    cantidadBanos.addEventListener("input", actualizarVisibilidad);
+    cantidadBanos.addEventListener("change", actualizarVisibilidad);
+    actualizarVisibilidad();
 }
 
 function obtenerServiciosSeleccionados(solicitud) {
@@ -115,6 +139,9 @@ function construirPayload(idSolicitud, serviciosSeleccionados) {
         payload.manoObra = {
             medidaAreaPrivada: numero("manoAreaPrivada"),
             cantidadBanos: entero("manoCantidadBanos"),
+            requiereDemolerBano: entero("manoCantidadBanos") === 1
+                ? valor("manoRequiereDemoler") === "true"
+                : false,
             tipoCielo: valor("manoTipoCielo"),
             divisionPared: valor("manoDivisionPared") === "true",
             metrosCuadradosPanelYeso: decimalOpcional("manoM2PanelYeso"),

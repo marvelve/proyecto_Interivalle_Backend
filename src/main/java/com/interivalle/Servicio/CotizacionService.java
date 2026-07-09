@@ -73,6 +73,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -119,6 +120,146 @@ public class CotizacionService {
     @Autowired private CronogramaService cronogramaServicio;
     @Autowired private NotificacionService notificacionService;
     @Autowired private CotizacionBaseV2Service cotizacionBaseV2Service;
+
+    @Transactional
+    public CotizacionVistaCompletaResponse eliminarActividades(
+            Integer idCotizacion,
+            List<Integer> idsDetalleActividad
+    ) {
+        Cotizacion cotizacion = cotizacionRepo.findById(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Cotizacion no encontrada"
+            ));
+
+        validarCotizacionEditable(cotizacion);
+
+        if (idsDetalleActividad == null || idsDetalleActividad.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Debe seleccionar al menos una actividad"
+            );
+        }
+
+        Set<Integer> idsSeleccionados = idsDetalleActividad.stream()
+            .filter(id -> id != null)
+            .collect(Collectors.toSet());
+
+        if (idsSeleccionados.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Debe seleccionar al menos una actividad valida"
+            );
+        }
+
+        List<CotizacionDetalle> detalles = detalleRepo
+            .findByCotizacion_IdCotizacion(idCotizacion);
+        detalles.sort(Comparator
+            .comparing((CotizacionDetalle d) -> d.getServicio().getIdServicio())
+            .thenComparing(d -> d.getSemana() == null ? 0 : d.getSemana())
+            .thenComparing(d -> d.getIdDetalle() == null ? 0 : d.getIdDetalle())
+        );
+
+        Map<Integer, CotizacionDetalle> detallesPorId = detalles.stream()
+            .filter(detalle -> detalle.getIdDetalle() != null)
+            .collect(Collectors.toMap(CotizacionDetalle::getIdDetalle, detalle -> detalle));
+
+        for (Integer idSeleccionado : idsSeleccionados) {
+            CotizacionDetalle actividad = detallesPorId.get(idSeleccionado);
+            if (actividad == null || actividad.getTipoItem() != TipoItemCotizacion.ACTIVIDAD) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Una de las actividades seleccionadas no pertenece a esta cotizacion"
+                );
+            }
+        }
+
+        Set<Integer> idsAEliminar = new HashSet<>();
+        boolean eliminarMateriales = false;
+        Integer servicioActividad = null;
+        Integer semanaActividad = null;
+
+        for (CotizacionDetalle detalle : detalles) {
+            if (detalle.getTipoItem() == TipoItemCotizacion.ACTIVIDAD) {
+                eliminarMateriales = idsSeleccionados.contains(detalle.getIdDetalle());
+                servicioActividad = detalle.getServicio().getIdServicio();
+                semanaActividad = detalle.getSemana();
+
+                if (eliminarMateriales) {
+                    idsAEliminar.add(detalle.getIdDetalle());
+                }
+                continue;
+            }
+
+            if (detalle.getTipoItem() == TipoItemCotizacion.PRODUCTO) {
+                eliminarMateriales = false;
+                continue;
+            }
+
+            boolean mismaActividad =
+                eliminarMateriales
+                && detalle.getTipoItem() == TipoItemCotizacion.MATERIAL
+                && detalle.getServicio().getIdServicio().equals(servicioActividad)
+                && java.util.Objects.equals(detalle.getSemana(), semanaActividad);
+
+            if (mismaActividad) {
+                idsAEliminar.add(detalle.getIdDetalle());
+            } else {
+                eliminarMateriales = false;
+            }
+        }
+
+        List<CotizacionDetalle> detallesAEliminar = detalles.stream()
+            .filter(detalle -> idsAEliminar.contains(detalle.getIdDetalle()))
+            .collect(Collectors.toList());
+        detalleRepo.deleteAll(detallesAEliminar);
+        detalleRepo.flush();
+
+        List<CotizacionDetalle> restantes = detalles.stream()
+            .filter(detalle -> !idsAEliminar.contains(detalle.getIdDetalle()))
+            .collect(Collectors.toList());
+        recalcularTotalesCotizacion(cotizacion, restantes);
+        cotizacionRepo.save(cotizacion);
+
+        return obtenerVistaCompletaAdminSupervisor(idCotizacion);
+    }
+
+    private void recalcularTotalesCotizacion(
+            Cotizacion cotizacion,
+            List<CotizacionDetalle> detalles
+    ) {
+        BigDecimal totalManoObra = sumarDetallesPorTipo(
+            detalles,
+            TipoItemCotizacion.ACTIVIDAD
+        );
+        BigDecimal totalMateriales = sumarDetallesPorTipo(
+            detalles,
+            TipoItemCotizacion.MATERIAL
+        );
+        BigDecimal totalProductos = sumarDetallesPorTipo(
+            detalles,
+            TipoItemCotizacion.PRODUCTO
+        );
+
+        cotizacion.setTotalManoObra(totalManoObra);
+        cotizacion.setTotalMateriales(totalMateriales);
+        cotizacion.setTotalProductos(totalProductos);
+        cotizacion.setTotalEstimado(
+            totalManoObra.add(totalMateriales).add(totalProductos)
+        );
+    }
+
+    private BigDecimal sumarDetallesPorTipo(
+            List<CotizacionDetalle> detalles,
+            TipoItemCotizacion tipo
+    ) {
+        return detalles.stream()
+            .filter(detalle -> detalle.getTipoItem() == tipo)
+            .map(detalle -> detalle.getSubtotalVenta() != null
+                ? detalle.getSubtotalVenta()
+                : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
     // CREA COTIZACION MANUAL
     @Transactional
@@ -416,7 +557,11 @@ public class CotizacionService {
         cot.setFechaAprobacion(LocalDateTime.now());
         cot = cotizacionRepo.save(cot);
 
-        guardarObservacion(cot, usuario, TipoObservacion.APROBACION, req.getMensaje());
+        String mensajeAprobacion = req.getMensaje() == null || req.getMensaje().trim().isEmpty()
+                ? "Cotizacion aprobada por el cliente"
+                : req.getMensaje();
+
+        guardarObservacion(cot, usuario, TipoObservacion.APROBACION, mensajeAprobacion);
         guardarHistorial(cot, anterior, EstadoCotizacion.APROBADA_CLIENTE, usuario);
 
         notificarCotizacionAprobadaASupervisores(cot);
@@ -525,8 +670,12 @@ public class CotizacionService {
             mano.setCotizacion(cot);
             mano.setMedidaAreaPrivada(req.getManoObra().getMedidaAreaPrivada());
             mano.setCantidadBanos(req.getManoObra().getCantidadBanos());
+            mano.setRequiereDemolerBano(Boolean.TRUE.equals(req.getManoObra().getRequiereDemolerBano()));
+            mano.setRequiereSobrepisoNivelacion(Boolean.TRUE.equals(req.getManoObra().getRequiereSobrepisoNivelacion()));
             mano.setTipoCielo(req.getManoObra().getTipoCielo());
             mano.setDivisionPared(req.getManoObra().getDivisionPared());
+            mano.setCantidadPoyos(valorEntero(req.getManoObra().getCantidadPoyos()));
+            mano.setCantidadPuntosElectricos(valorEntero(req.getManoObra().getCantidadPuntosElectricos()));
             cotizacionManoObraRepo.save(mano);
         }
 
@@ -620,7 +769,7 @@ public class CotizacionService {
                    // detActividad.setDescripcion(actividad.getNombreItem());
                     detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
                     detActividad.setActividadMaterial(actividad.getNombreItem());
-                    detActividad.setCantidad(BigDecimal.ONE);
+                    detActividad.setCantidad(obtenerCantidadDetalleActividad(actividad, req.getManoObra()));
                     detActividad.setPrecioUnitarioVenta(valorActividad);
                     detActividad.setSubtotalVenta(valorActividad);
                     detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
@@ -895,8 +1044,20 @@ public class CotizacionService {
                 ManoObraBaseRequest dto = new ManoObraBaseRequest();
                 dto.setMedidaAreaPrivada(mano.getMedidaAreaPrivada());
                 dto.setCantidadBanos(mano.getCantidadBanos());
+                dto.setRequiereDemolerBano(Boolean.TRUE.equals(mano.getRequiereDemolerBano()));
+                dto.setRequiereSobrepisoNivelacion(Boolean.TRUE.equals(mano.getRequiereSobrepisoNivelacion()));
                 dto.setTipoCielo(mano.getTipoCielo());
                 dto.setDivisionPared(mano.getDivisionPared());
+                dto.setCantidadPoyos(
+                    mano.getCantidadPoyos() != null
+                        ? mano.getCantidadPoyos()
+                        : obtenerCantidadPoyosDesdeDetalle(cot.getIdCotizacion())
+                );
+                dto.setCantidadPuntosElectricos(
+                    mano.getCantidadPuntosElectricos() != null
+                        ? mano.getCantidadPuntosElectricos()
+                        : obtenerCantidadPuntosElectricosDesdeDetalle(cot.getIdCotizacion())
+                );
                 resp.setManoObra(dto);
             });
 
@@ -1010,8 +1171,12 @@ public class CotizacionService {
                 });
             mano.setMedidaAreaPrivada(req.getManoObra().getMedidaAreaPrivada());
             mano.setCantidadBanos(req.getManoObra().getCantidadBanos());
+            mano.setRequiereDemolerBano(Boolean.TRUE.equals(req.getManoObra().getRequiereDemolerBano()));
+            mano.setRequiereSobrepisoNivelacion(Boolean.TRUE.equals(req.getManoObra().getRequiereSobrepisoNivelacion()));
             mano.setTipoCielo(req.getManoObra().getTipoCielo());
             mano.setDivisionPared(req.getManoObra().getDivisionPared());
+            mano.setCantidadPoyos(valorEntero(req.getManoObra().getCantidadPoyos()));
+            mano.setCantidadPuntosElectricos(valorEntero(req.getManoObra().getCantidadPuntosElectricos()));
             cotizacionManoObraRepo.save(mano);
         } else {
             cotizacionManoObraRepo.findByCotizacionIdCotizacion(cot.getIdCotizacion())
@@ -1119,7 +1284,7 @@ public class CotizacionService {
                     detActividad.setSemana(actividad.getSemana());
                     detActividad.setDescripcion(obtenerDescripcionCatalogo(actividad));
                     detActividad.setActividadMaterial(actividad.getNombreItem());
-                    detActividad.setCantidad(BigDecimal.ONE);
+                    detActividad.setCantidad(obtenerCantidadDetalleActividad(actividad, req.getManoObra()));
                     detActividad.setPrecioUnitarioVenta(valorActividad);
                     detActividad.setSubtotalVenta(valorActividad);
                     detActividad.setPrecioUnitarioProveedor(BigDecimal.ZERO);
@@ -1333,11 +1498,20 @@ private Integer obtenerCantidadSegunActividad(CatalogoItem actividad, GenerarCot
 
     String texto = textoCatalogo(actividad);
 
+    if (esActividadBanoPrincipal(texto)) {
+        return cantidadBanosPrincipales(req.getManoObra());
+    }
+
+    if (esActividadBanoSocial(texto)) {
+        return actividadBanoSocialAplica(texto, req.getManoObra()) ? 1 : 0;
+    }
+
     if (texto.contains("poyo")) {
         return obtenerCantidadPoyos(actividad, req.getManoObra());
     }
 
-    if (texto.contains("centrar luces") ||  texto.contains("punto electrico") || texto.contains("puntos electricos")) {
+    if ("CANTIDAD_PUNTOS_ELECTRICOS".equals(normalizarTexto(actividad != null ? actividad.getVariableBase() : null))
+            || esTextoCentrarLuces(texto)) {
         return obtenerCantidadPuntosElectricos(actividad, req.getManoObra());
     }
 
@@ -1416,6 +1590,10 @@ private boolean actividadAplicaParaManoObra(CatalogoItem actividad, ManoObraBase
 
     String texto = textoCatalogo(actividad);
 
+    if (esActividadSobrepisoNivelacion(texto)) {
+        return Boolean.TRUE.equals(manoObra.getRequiereSobrepisoNivelacion());
+    }
+
     if (esActividadEstucoParedesYCielo(texto)) {
         return esTipoCielo(manoObra, "ESTUCO");
     }
@@ -1436,7 +1614,8 @@ private boolean actividadAplicaParaManoObra(CatalogoItem actividad, ManoObraBase
         return esTipoCielo(manoObra, "ESTUCO");
     }
 
-    if (texto.contains("centrar luces") || texto.contains("punto electrico") || texto.contains("puntos electricos")) {
+    if ("CANTIDAD_PUNTOS_ELECTRICOS".equals(normalizarTexto(actividad != null ? actividad.getVariableBase() : null))
+            || esTextoCentrarLuces(texto)) {
         return obtenerCantidadPuntosElectricos(actividad, manoObra) > 0;
     }
 
@@ -1444,15 +1623,22 @@ private boolean actividadAplicaParaManoObra(CatalogoItem actividad, ManoObraBase
         return obtenerCantidadPoyos(actividad, manoObra) > 0;
     }
 
-    if (texto.contains("bano social")) {
-        return cantidadBanos(manoObra) >= 1;
+    if (esActividadBanoSocial(texto)) {
+        return actividadBanoSocialAplica(texto, manoObra);
     }
 
-    if (texto.contains("bano principal")) {
-        return cantidadBanos(manoObra) >= 2;
+    if (esActividadBanoPrincipal(texto)) {
+        return cantidadBanosPrincipales(manoObra) > 0;
     }
 
     return true;
+}
+
+private boolean esActividadSobrepisoNivelacion(String texto) {
+    return texto != null
+            && (texto.contains("sobrepiso")
+            || texto.contains("nivelacion")
+            || texto.contains("nivelar"));
 }
 
 private boolean esActividadEstucoParedesYCielo(String texto) {
@@ -1537,23 +1723,62 @@ private boolean esTipoCielo(ManoObraBaseRequest manoObra, String esperado) {
 }
 
 private int cantidadBanos(ManoObraBaseRequest manoObra) {
-    if (manoObra.getCantidadBanos() == null) {
+    if (manoObra == null || manoObra.getCantidadBanos() == null) {
         return 0;
     }
 
     return Math.max(0, Math.min(manoObra.getCantidadBanos(), 4));
 }
 
-private int obtenerRepeticionesDetalleManoObra(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
-    if (actividad == null || manoObra == null) {
+private int cantidadBanosPrincipales(ManoObraBaseRequest manoObra) {
+    if (cantidadBanos(manoObra) == 1 && !requiereDemolerBano(manoObra)) {
         return 1;
     }
 
-    if (textoCatalogo(actividad).contains("bano principal")) {
-        return Math.max(1, cantidadBanos(manoObra) - 1);
+    return Math.max(0, cantidadBanos(manoObra) - 1);
+}
+
+private boolean requiereDemolerBano(ManoObraBaseRequest manoObra) {
+    return manoObra != null && Boolean.TRUE.equals(manoObra.getRequiereDemolerBano());
+}
+
+private boolean esActividadBanoSocial(String texto) {
+    return texto != null && texto.contains("bano social");
+}
+
+private boolean esActividadBanoSocialDemoler(String texto) {
+    return esActividadBanoSocial(texto)
+            && (texto.contains("demoler") || texto.contains("demolicion") || texto.contains("demoliciones"));
+}
+
+private boolean esActividadBanoPrincipal(String texto) {
+    return texto != null && texto.contains("bano principal");
+}
+
+private boolean actividadBanoSocialAplica(String texto, ManoObraBaseRequest manoObra) {
+    int banos = cantidadBanos(manoObra);
+
+    if (banos <= 0) {
+        return false;
     }
 
+    if (banos == 1) {
+        return requiereDemolerBano(manoObra);
+    }
+
+    return true;
+}
+
+private int obtenerRepeticionesDetalleManoObra(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
     return 1;
+}
+
+private BigDecimal obtenerCantidadDetalleActividad(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
+    if (actividad != null && esActividadBanoPrincipal(textoCatalogo(actividad))) {
+        return BigDecimal.valueOf(cantidadBanosPrincipales(manoObra));
+    }
+
+    return BigDecimal.ONE;
 }
 
 private int obtenerCantidadPoyos(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
@@ -1569,10 +1794,8 @@ private int obtenerCantidadPoyos(CatalogoItem actividad, ManoObraBaseRequest man
 }
 
 private int obtenerCantidadPuntosElectricos(CatalogoItem actividad, ManoObraBaseRequest manoObra) {
-    if (manoObra != null
-            && manoObra.getCantidadPuntosElectricos() != null
-            && manoObra.getCantidadPuntosElectricos() > 0) {
-        return manoObra.getCantidadPuntosElectricos();
+    if (manoObra != null && manoObra.getCantidadPuntosElectricos() != null) {
+        return Math.max(0, manoObra.getCantidadPuntosElectricos());
     }
 
     Integer cantidadCatalogo = obtenerCantidadDesdeParams(actividad != null ? actividad.getParamsJson() : null);
@@ -1654,25 +1877,30 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
 
     BigDecimal factor = obtenerFactorActividad(actividad, req.getManoObra());
 
+    BigDecimal valor;
+
     switch (formula) {
         case "FIJO":
-            return precio;
+            valor = precio;
+            break;
 
         case "AREA_PRIVADA_X_FACTOR":
             if (req.getManoObra() == null || req.getManoObra().getMedidaAreaPrivada() == null) {
                 return BigDecimal.ZERO;
             }
-            return precio.multiply(
+            valor = precio.multiply(
                     factor.multiply(BigDecimal.valueOf(req.getManoObra().getMedidaAreaPrivada()))
             );
+            break;
 
         case "AREA_PRIVADA_X_PRECIO":
             if (req.getManoObra() == null || req.getManoObra().getMedidaAreaPrivada() == null) {
                 return BigDecimal.ZERO;
             }
-            return precio.multiply(
+            valor = precio.multiply(
                     BigDecimal.valueOf(req.getManoObra().getMedidaAreaPrivada())
             );
+            break;
 
         case "METRO_CUADRADO_X_PRECIO":
             BigDecimal metros2 = obtenerMetrosCuadradosCondicionado(actividad, req);
@@ -1680,25 +1908,35 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
                 return BigDecimal.ZERO;
             }
             System.out.println("Metros cuadrados: " + metros2);
-            return precio.multiply(metros2);
+            valor = precio.multiply(metros2);
+            break;
 
         case "CANTIDAD_X_PRECIO":
             Integer cantidad = obtenerCantidadSegunActividad(actividad, req);
             if (cantidad == null || cantidad <= 0) {
                 return BigDecimal.ZERO;
             }
-            return precio.multiply(BigDecimal.valueOf(cantidad));
+            valor = precio.multiply(BigDecimal.valueOf(cantidad));
+            break;
 
         case "AREA_FIJA_X_PRECIO":
             BigDecimal areaFija = obtenerAreaTotalDesdeParams(actividad.getParamsJson());
             if (areaFija == null || areaFija.compareTo(BigDecimal.ZERO) <= 0) {
                 return BigDecimal.ZERO;
             }
-            return precio.multiply(areaFija);
+            valor = precio.multiply(areaFija);
+            break;
 
         default:
             return BigDecimal.ZERO;
     }
+
+    if (esActividadBanoPrincipal(textoCatalogo(actividad))
+            && !"CANTIDAD_X_PRECIO".equals(formula)) {
+        return valor.multiply(BigDecimal.valueOf(cantidadBanosPrincipales(req.getManoObra())));
+    }
+
+    return valor;
 }
         
         
@@ -1713,14 +1951,31 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
 
             switch (modoCantidad) {
                 case "PROPORCIONAL_AREA_PRIVADA":
-                    return calcularCantidadMaterialPorAreaPrivada(rel.getCantidad(), rel.getFactor(), req);
+                    return aplicarFactorBanosPrincipales(
+                            calcularCantidadMaterialPorAreaPrivada(rel.getCantidad(), rel.getFactor(), req),
+                            rel.getActividad(),
+                            req
+                    );
 
                 case "FIJO":
                 case "FIJA":
                 case "MANUAL":
                 default:
-                    return rel.getCantidad();
+                    return aplicarFactorBanosPrincipales(rel.getCantidad(), rel.getActividad(), req);
             }
+        }
+
+        private BigDecimal aplicarFactorBanosPrincipales(
+                BigDecimal valor,
+                CatalogoItem actividad,
+                GenerarCotizacionBaseRequest req
+        ) {
+            if (valor == null || !esActividadBanoPrincipal(textoCatalogo(actividad))) {
+                return valor == null ? BigDecimal.ZERO : valor;
+            }
+
+            ManoObraBaseRequest manoObra = req != null ? req.getManoObra() : null;
+            return valor.multiply(BigDecimal.valueOf(cantidadBanosPrincipales(manoObra)));
         }
 
         private BigDecimal calcularCantidadMaterialPorAreaPrivada(
@@ -2523,6 +2778,50 @@ private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleR
     private String normalizarTexto(String texto) {
     return texto == null ? "" : texto.trim().toLowerCase();
     }
+
+    private boolean esTextoCentrarLuces(String texto) {
+        return texto != null
+                && ((texto.contains("centrar") && texto.contains("luces"))
+                || texto.contains("punto electrico")
+                || texto.contains("puntos electricos"));
+    }
+
+    private Integer obtenerCantidadPoyosDesdeDetalle(Integer idCotizacion) {
+        if (idCotizacion == null) {
+            return 0;
+        }
+
+        return detalleRepo.findByCotizacion_IdCotizacion(idCotizacion).stream()
+            .filter(detalle -> detalle.getTipoItem() == TipoItemCotizacion.ACTIVIDAD)
+            .filter(detalle -> {
+                String texto = normalizarTexto(
+                    (detalle.getActividadMaterial() == null ? "" : detalle.getActividadMaterial()) + " "
+                    + (detalle.getDescripcion() == null ? "" : detalle.getDescripcion())
+                );
+                return texto.contains("poyo") || texto.contains("rebanco");
+            })
+            .map(detalle -> detalle.getCantidad() == null ? 0 : detalle.getCantidad().intValue())
+            .findFirst()
+            .orElse(0);
+    }
+
+    private Integer obtenerCantidadPuntosElectricosDesdeDetalle(Integer idCotizacion) {
+        if (idCotizacion == null) {
+            return 0;
+        }
+
+        return detalleRepo.findByCotizacion_IdCotizacion(idCotizacion).stream()
+            .filter(detalle -> detalle.getTipoItem() == TipoItemCotizacion.ACTIVIDAD)
+            .filter(detalle -> {
+                String texto = normalizarTexto(
+                    (detalle.getActividadMaterial() == null ? "" : detalle.getActividadMaterial()) + " "
+                    + (detalle.getDescripcion() == null ? "" : detalle.getDescripcion())
+                );
+                return esTextoCentrarLuces(texto);
+            })
+            .map(detalle -> detalle.getCantidad() == null ? 0 : detalle.getCantidad().intValue())
+            .reduce(0, Integer::sum);
+    }
     
 private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<CotizacionDetalleResponse> items) {
     List<ActividadAgrupadaResponse> resultado = new ArrayList<>();
@@ -2534,9 +2833,11 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
         }
 
         ActividadAgrupadaResponse actividad = new ActividadAgrupadaResponse();
+        actividad.setIdDetalle(act.getIdDetalle());
         actividad.setActividad( act.getActividadMaterial() != null && !act.getActividadMaterial().trim().isEmpty()
         ? act.getActividadMaterial()
         : act.getDescripcion());
+        actividad.setCantidadActividad(act.getCantidad());
         
         actividad.setPrecioActividad(
             act.getSubtotalVenta() != null ? act.getSubtotalVenta() : BigDecimal.ZERO
@@ -2578,6 +2879,7 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
             itemProducto.setPrecioActividad(
                 producto.getSubtotalVenta() != null ? producto.getSubtotalVenta() : BigDecimal.ZERO
             );
+            itemProducto.setCantidadActividad(producto.getCantidad());
             itemProducto.setMateriales(new ArrayList<>());
             resultado.add(itemProducto);
         });

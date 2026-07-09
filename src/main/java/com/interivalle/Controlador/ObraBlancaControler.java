@@ -6,6 +6,7 @@ import com.interivalle.Servicio.ObraBlancaService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ public class ObraBlancaControler {
     @Autowired
     private ObraBlancaService obraBlancaService;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PostMapping
     public ObraBlancaResponse guardar(@Valid @RequestBody ObraBlancaRequest req) {
         // Guarda una actividad adicional de Mano de Obra / Obra Blanca.
@@ -40,6 +42,7 @@ public class ObraBlancaControler {
         return obraBlancaService.obtenerPorId(id);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PutMapping("/{id}")
     public ObraBlancaResponse actualizar(
             @PathVariable Integer id,
@@ -48,6 +51,7 @@ public class ObraBlancaControler {
         return obraBlancaService.actualizar(id, req);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         obraBlancaService.eliminar(id);

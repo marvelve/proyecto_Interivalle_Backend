@@ -5,6 +5,8 @@
 package com.interivalle.Controlador;
 
 import com.interivalle.DTO.ActualizarPrecioCatalogoRequest;
+import com.interivalle.DTO.ActividadMaterialV2Request;
+import com.interivalle.DTO.ActividadMaterialV2Response;
 import com.interivalle.DTO.CatalogoItemResponse;
 import com.interivalle.DTO.CrearCatalogoItemRequest;
 import com.interivalle.Servicio.CatalogoItemService;
@@ -47,5 +49,36 @@ public class CatalogoItemControler {
     @PreAuthorize("hasAuthority('ADMIN')")
     public CatalogoItemResponse crear(@RequestBody CrearCatalogoItemRequest dto) {
         return service.crear(dto);
+    }
+
+    @GetMapping("/materiales/{idMaterial}/relaciones")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    public List<ActividadMaterialV2Response> listarRelacionesMaterial(@PathVariable Integer idMaterial) {
+        return service.listarRelacionesMaterial(idMaterial);
+    }
+
+    @GetMapping("/actividades/{idActividad}/relaciones")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    public List<ActividadMaterialV2Response> listarRelacionesActividad(@PathVariable Integer idActividad) {
+        return service.listarRelacionesActividad(idActividad);
+    }
+
+    @PostMapping("/materiales/{idMaterial}/relaciones")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ActividadMaterialV2Response crearRelacionMaterial(
+            @PathVariable Integer idMaterial,
+            @RequestBody ActividadMaterialV2Request dto
+    ) {
+        return service.crearRelacionMaterial(idMaterial, dto);
+    }
+
+    @PutMapping("/materiales/{idMaterial}/relaciones/{idRelacion}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ActividadMaterialV2Response actualizarRelacionMaterial(
+            @PathVariable Integer idMaterial,
+            @PathVariable Integer idRelacion,
+            @RequestBody ActividadMaterialV2Request dto
+    ) {
+        return service.actualizarRelacionMaterial(idMaterial, idRelacion, dto);
     }
 }

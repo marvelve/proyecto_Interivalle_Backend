@@ -252,7 +252,13 @@
                         <input type="number" id="manoAreaPrivada" min="1" step="0.01">
                     </label>
                     <label>Cantidad de banos
-                        <input type="number" id="manoCantidadBanos" min="1" step="1">
+                        <input type="number" id="manoCantidadBanos" min="0" max="4" step="1">
+                    </label>
+                    <label id="grupoManoRequiereDemoler" hidden>Requiere demoler?
+                        <select id="manoRequiereDemoler">
+                            <option value="false">No</option>
+                            <option value="true">Si</option>
+                        </select>
                     </label>
                     <label>Division de pared
                         <select id="manoDivisionPared">

@@ -71,6 +71,9 @@ public class CatalogoItem {
     @Column(name = "formula_code", length = 80)
     private String formulaCode;
 
+    @Column(name = "variable_base", length = 80)
+    private String variableBase;
+
     // Parámetros flexibles para fórmulas
     // Ejemplo: {"factor":3,"campoEntrada":"medidaAreaPrivada"}
     @Column(name = "params_json", columnDefinition = "TEXT")
@@ -197,6 +200,14 @@ public class CatalogoItem {
 
     public void setFormulaCode(String formulaCode) {
         this.formulaCode = formulaCode;
+    }
+
+    public String getVariableBase() {
+        return variableBase;
+    }
+
+    public void setVariableBase(String variableBase) {
+        this.variableBase = variableBase;
     }
 
     public String getParamsJson() {

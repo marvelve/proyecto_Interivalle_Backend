@@ -5,6 +5,7 @@ import com.interivalle.DTO.CotizacionBaseResponse;
 import com.interivalle.DTO.CotizacionResponse;
 import com.interivalle.DTO.CotizacionVistaCompletaResponse;
 import com.interivalle.DTO.GenerarCotizacionBaseRequest;
+import com.interivalle.DTO.EliminarActividadesCotizacionRequest;
 import com.interivalle.Modelo.Cotizacion;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Repositorio.UsuarioRepositorio;
@@ -109,6 +110,22 @@ public class CotizacionControler {
                 cotizacion,
                 req,
                 "Cotizacion base actualizada correctamente con catalogo V2"
+        );
+    }
+
+    @PostMapping("/{idCotizacion}/eliminar-actividades")
+    public CotizacionVistaCompletaResponse eliminarActividades(
+            @PathVariable Integer idCotizacion,
+            @RequestBody EliminarActividadesCotizacionRequest request,
+            Authentication authentication
+    ) {
+        validarAdminSupervisor(
+                authentication,
+                "No tiene permisos para eliminar actividades de esta cotizacion"
+        );
+        return cotizacionService.eliminarActividades(
+                idCotizacion,
+                request != null ? request.getIdsDetalleActividad() : null
         );
     }
 

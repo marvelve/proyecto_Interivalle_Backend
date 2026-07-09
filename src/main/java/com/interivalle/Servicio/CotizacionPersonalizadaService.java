@@ -57,10 +57,6 @@ public class CotizacionPersonalizadaService {
 
     public CotizacionPersonalizadaResponse crear(CotizacionPersonalizadaRequest req) {
         // Validaciones principales para crear la cabecera de adicionales.
-        if (req.getIdSolicitud() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idSolicitud es obligatorio");
-        }
-
         if (req.getIdCotizacion() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idCotizacion es obligatorio");
         }
@@ -75,13 +71,6 @@ public class CotizacionPersonalizadaService {
             return toResponse(existente);
         }
 
-        // Consulta la solicitud y la cotizacion base que van a quedar relacionadas.
-        Solicitud solicitud = solicitudRepo.findById(req.getIdSolicitud())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Solicitud no encontrada"
-                ));
-
         Cotizacion cotizacionBase = cotizacionBaseRepo.findById(req.getIdCotizacion())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -89,6 +78,9 @@ public class CotizacionPersonalizadaService {
                 ));
 
         validarCotizacionBaseEditable(cotizacionBase);
+
+        // Para Admin/Supervisor basta el id de cotizacion base: la solicitud se infiere de la cotizacion.
+        Solicitud solicitud = obtenerSolicitudParaAdicional(req.getIdSolicitud(), cotizacionBase);
 
         CotizacionPersonalizada cotizacion = new CotizacionPersonalizada();
         cotizacion.setSolicitud(solicitud);
@@ -229,12 +221,6 @@ public class CotizacionPersonalizadaService {
             return existente;
         }
 
-        Solicitud solicitud = solicitudRepo.findById(idSolicitud)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Solicitud no encontrada"
-                ));
-
         Cotizacion cotizacionBase = cotizacionBaseRepo.findById(idCotizacion)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -242,6 +228,8 @@ public class CotizacionPersonalizadaService {
                 ));
 
         validarCotizacionBaseEditable(cotizacionBase);
+
+        Solicitud solicitud = obtenerSolicitudParaAdicional(idSolicitud, cotizacionBase);
 
         CotizacionPersonalizada nueva = new CotizacionPersonalizada();
         nueva.setSolicitud(solicitud);
@@ -306,6 +294,31 @@ public class CotizacionPersonalizadaService {
         }
 
         return solicitud.getNombreProyectoUsuario();
+    }
+
+    private Solicitud obtenerSolicitudParaAdicional(Integer idSolicitudRequest, Cotizacion cotizacionBase) {
+        if (cotizacionBase == null || cotizacionBase.getSolicitud() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La cotizacion base no tiene una solicitud asociada"
+            );
+        }
+
+        Solicitud solicitudCotizacion = cotizacionBase.getSolicitud();
+
+        if (idSolicitudRequest == null) {
+            return solicitudCotizacion;
+        }
+
+        if (!solicitudCotizacion.getIdSolicitud().equals(idSolicitudRequest)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La solicitud no corresponde a la cotizacion base"
+            );
+        }
+
+        return solicitudRepo.findById(idSolicitudRequest)
+                .orElse(solicitudCotizacion);
     }
 
     private void validarEstadoPersonalizado(String estado) {

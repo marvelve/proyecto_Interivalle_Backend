@@ -5,6 +5,7 @@ import com.interivalle.Modelo.Vidrio;
 import com.interivalle.Servicio.VidrioService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ public class VidrioControler {
     @Autowired
     private VidrioService vidrioService;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PostMapping
     public Vidrio guardar(@RequestBody VidrioRequest req) {
         // Guarda un adicional de divisiones en vidrio.
@@ -39,11 +41,13 @@ public class VidrioControler {
         return vidrioService.obtenerPorId(id);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @PutMapping("/{id}")
     public Vidrio actualizar(@PathVariable Integer id, @RequestBody VidrioRequest req) {
         return vidrioService.actualizar(id, req);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         vidrioService.eliminar(id);

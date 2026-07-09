@@ -16,6 +16,14 @@ public interface ActividadMaterialV2Repositorio extends JpaRepository<ActividadM
 
     List<ActividadMaterialV2> findByActividad_IdActividadAndActivoTrue(Integer idActividad);
 
+    List<ActividadMaterialV2> findByMaterial_IdMaterialOrderByActividad_Servicio_IdServiciosAscActividad_NombreActividadAsc(
+            Integer idMaterial
+    );
+
+    List<ActividadMaterialV2> findByActividad_IdActividadOrderByMaterial_NombreMaterialAsc(
+            Integer idActividad
+    );
+
     List<ActividadMaterialV2> findByActividad_IdActividadAndActivoTrueOrderBySemanaAscIdActividadMaterialV2Asc(
             Integer idActividad
     );

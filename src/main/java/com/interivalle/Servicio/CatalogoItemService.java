@@ -1,15 +1,19 @@
 package com.interivalle.Servicio;
 
 import com.interivalle.DTO.ActualizarPrecioCatalogoRequest;
+import com.interivalle.DTO.ActividadMaterialV2Request;
+import com.interivalle.DTO.ActividadMaterialV2Response;
 import com.interivalle.DTO.CatalogoItemResponse;
 import com.interivalle.DTO.CrearCatalogoItemRequest;
 import com.interivalle.Modelo.Actividad;
+import com.interivalle.Modelo.ActividadPersonalizada;
 import com.interivalle.Modelo.ActividadMaterialV2;
 import com.interivalle.Modelo.Material;
 import com.interivalle.Modelo.Producto;
 import com.interivalle.Modelo.Servicios;
 import com.interivalle.Modelo.enums.TipoItemCotizacion;
 import com.interivalle.Repositorio.ActividadMaterialV2Repositorio;
+import com.interivalle.Repositorio.ActividadPersonalizadaRepositorio;
 import com.interivalle.Repositorio.ActividadRepositorio;
 import com.interivalle.Repositorio.MaterialRepositorio;
 import com.interivalle.Repositorio.ProductoRepositorio;
@@ -33,6 +37,8 @@ public class CatalogoItemService {
     private static final int OFFSET_ACTIVIDAD = 1_000_000;
     private static final int OFFSET_MATERIAL = 2_000_000;
     private static final int OFFSET_PRODUCTO = 3_000_000;
+    private static final int OFFSET_ACTIVIDAD_ADICIONAL = 4_000_000;
+    private static final String TIPO_ACTIVIDAD_ADICIONAL = "ACTIVIDAD ADICIONAL";
 
     @Autowired
     private ActividadRepositorio actividadRepo;
@@ -45,6 +51,9 @@ public class CatalogoItemService {
 
     @Autowired
     private ActividadMaterialV2Repositorio actividadMaterialV2Repo;
+
+    @Autowired
+    private ActividadPersonalizadaRepositorio actividadPersonalizadaRepo;
 
     @Autowired
     private ServiciosRepositorio serviciosRepo;
@@ -81,15 +90,19 @@ public class CatalogoItemService {
                 respuesta.add(toResponseProducto(producto))
         );
 
+        actividadPersonalizadaRepo.findAll().forEach(actividad ->
+                respuesta.add(toResponseActividadAdicional(actividad))
+        );
+
         return respuesta;
     }
 
     @Transactional(readOnly = true)
     public CatalogoItemResponse obtenerPorId(Integer id) {
-        TipoItemCotizacion tipo = obtenerTipoDesdeId(id);
+        String tipo = obtenerTipoDesdeId(id);
         Integer idReal = obtenerIdReal(id, tipo);
 
-        if (tipo == TipoItemCotizacion.ACTIVIDAD) {
+        if (TipoItemCotizacion.ACTIVIDAD.name().equals(tipo)) {
             Actividad actividad = actividadRepo.findById(idReal)
                     .orElseThrow(() -> noEncontrado("Actividad no encontrada"));
             int relaciones = actividadMaterialV2Repo
@@ -98,11 +111,17 @@ public class CatalogoItemService {
             return toResponseActividad(actividad, relaciones);
         }
 
-        if (tipo == TipoItemCotizacion.MATERIAL) {
+        if (TipoItemCotizacion.MATERIAL.name().equals(tipo)) {
             Material material = materialRepo.findById(idReal)
                     .orElseThrow(() -> noEncontrado("Material no encontrado"));
             int relaciones = contarRelacionesMaterial(material.getIdMaterial());
             return toResponseMaterial(material, relaciones);
+        }
+
+        if (TIPO_ACTIVIDAD_ADICIONAL.equals(tipo)) {
+            ActividadPersonalizada actividad = actividadPersonalizadaRepo.findById(idReal)
+                    .orElseThrow(() -> noEncontrado("Actividad adicional no encontrada"));
+            return toResponseActividadAdicional(actividad);
         }
 
         Producto producto = productoRepo.findById(idReal)
@@ -112,12 +131,24 @@ public class CatalogoItemService {
 
     @Transactional
     public CatalogoItemResponse actualizarPrecio(Integer id, ActualizarPrecioCatalogoRequest dto) {
-        TipoItemCotizacion tipo = obtenerTipoDesdeId(id);
+        String tipo = obtenerTipoDesdeId(id);
         Integer idReal = obtenerIdReal(id, tipo);
 
-        if (tipo == TipoItemCotizacion.ACTIVIDAD) {
+        if (TipoItemCotizacion.ACTIVIDAD.name().equals(tipo)) {
             Actividad actividad = actividadRepo.findById(idReal)
                     .orElseThrow(() -> noEncontrado("Actividad no encontrada"));
+
+            if (dto.getNombreItem() != null) {
+                actividad.setNombreActividad(dto.getNombreItem());
+            }
+
+            if (dto.getCategoria() != null) {
+                actividad.setCategoria(dto.getCategoria());
+            }
+
+            if (dto.getIdServicio() != null) {
+                actividad.setServicio(buscarServicio(dto.getIdServicio()));
+            }
 
             if (dto.getPrecioUnitarioVenta() != null) {
                 actividad.setPrecioUnitarioVenta(dto.getPrecioUnitarioVenta());
@@ -134,17 +165,68 @@ public class CatalogoItemService {
             return toResponseActividad(actualizada, relaciones);
         }
 
-        if (tipo == TipoItemCotizacion.MATERIAL) {
+        if (TipoItemCotizacion.MATERIAL.name().equals(tipo)) {
             Material material = materialRepo.findById(idReal)
                     .orElseThrow(() -> noEncontrado("Material no encontrado"));
+
+            if (dto.getNombreItem() != null) {
+                material.setNombreMaterial(dto.getNombreItem());
+            }
+
+            if (dto.getCategoria() != null) {
+                material.setCategoria(dto.getCategoria());
+            }
+
+            if (dto.getIdServicio() != null) {
+                material.setServicio(buscarServicio(dto.getIdServicio()));
+            }
 
             aplicarPrecioMaterial(material, dto);
             Material actualizado = materialRepo.save(material);
             return toResponseMaterial(actualizado, contarRelacionesMaterial(actualizado.getIdMaterial()));
         }
 
+        if (TIPO_ACTIVIDAD_ADICIONAL.equals(tipo)) {
+            ActividadPersonalizada actividad = actividadPersonalizadaRepo.findById(idReal)
+                    .orElseThrow(() -> noEncontrado("Actividad adicional no encontrada"));
+
+            if (dto.getNombreItem() != null) {
+                actividad.setNombreActividad(dto.getNombreItem());
+            }
+
+            if (dto.getCategoria() != null) {
+                actividad.setTipoCobro(dto.getCategoria());
+            }
+
+            if (dto.getIdServicio() != null) {
+                actividad.setServicios(buscarServicio(dto.getIdServicio()));
+            }
+
+            if (dto.getPrecioUnitarioVenta() != null) {
+                actividad.setPrecioUnitario(dto.getPrecioUnitarioVenta());
+            }
+
+            if (dto.getActivo() != null) {
+                actividad.setEstado(dto.getActivo());
+            }
+
+            return toResponseActividadAdicional(actividadPersonalizadaRepo.save(actividad));
+        }
+
         Producto producto = productoRepo.findById(idReal)
                 .orElseThrow(() -> noEncontrado("Producto no encontrado"));
+
+        if (dto.getNombreItem() != null) {
+            producto.setNombreProducto(dto.getNombreItem());
+        }
+
+        if (dto.getCategoria() != null) {
+            producto.setCategoria(dto.getCategoria());
+        }
+
+        if (dto.getIdServicio() != null) {
+            producto.setServicio(buscarServicio(dto.getIdServicio()));
+        }
 
         aplicarPrecioProducto(producto, dto);
         return toResponseProducto(productoRepo.save(producto));
@@ -152,11 +234,11 @@ public class CatalogoItemService {
 
     @Transactional
     public CatalogoItemResponse crear(CrearCatalogoItemRequest dto) {
-        TipoItemCotizacion tipo = validarTipo(dto.getTipoItem());
+        String tipoItem = normalizarTipo(dto.getTipoItem());
         Servicios servicio = serviciosRepo.findById(dto.getIdServicio())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
 
-        if (tipo == TipoItemCotizacion.ACTIVIDAD) {
+        if (TipoItemCotizacion.ACTIVIDAD.name().equals(tipoItem)) {
             Actividad actividad = new Actividad();
             actividad.setServicio(servicio);
             actividad.setCodigo(generarCodigo("ACT"));
@@ -171,7 +253,7 @@ public class CatalogoItemService {
             return toResponseActividad(actividadRepo.save(actividad), 0);
         }
 
-        if (tipo == TipoItemCotizacion.MATERIAL) {
+        if (TipoItemCotizacion.MATERIAL.name().equals(tipoItem)) {
             Material material = new Material();
             material.setServicio(servicio);
             material.setCodigo(generarCodigo("MAT"));
@@ -184,7 +266,20 @@ public class CatalogoItemService {
             material.setFechaCreacion(LocalDateTime.now());
             material.setFechaActualizacion(LocalDateTime.now());
 
-            return toResponseMaterial(materialRepo.save(material), 0);
+            Material creado = materialRepo.save(material);
+            crearRelacionesInicialesMaterial(creado, dto.getRelacionesActividad());
+            return toResponseMaterial(creado, contarRelacionesMaterial(creado.getIdMaterial()));
+        }
+
+        if (TIPO_ACTIVIDAD_ADICIONAL.equals(tipoItem)) {
+            ActividadPersonalizada actividad = new ActividadPersonalizada();
+            actividad.setServicios(servicio);
+            actividad.setNombreActividad(dto.getNombreItem());
+            actividad.setTipoCobro(dto.getCategoria());
+            actividad.setPrecioUnitario(valorSeguro(dto.getPrecioUnitarioVenta()));
+            actividad.setEstado(dto.getActivo() != null ? dto.getActivo() : true);
+
+            return toResponseActividadAdicional(actividadPersonalizadaRepo.save(actividad));
         }
 
         Producto producto = new Producto();
@@ -200,6 +295,75 @@ public class CatalogoItemService {
         producto.setFechaActualizacion(LocalDateTime.now());
 
         return toResponseProducto(productoRepo.save(producto));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActividadMaterialV2Response> listarRelacionesMaterial(Integer idMaterial) {
+        validarMaterialExiste(idMaterial);
+        return actividadMaterialV2Repo
+                .findByMaterial_IdMaterialOrderByActividad_Servicio_IdServiciosAscActividad_NombreActividadAsc(idMaterial)
+                .stream()
+                .map(this::toResponseRelacion)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActividadMaterialV2Response> listarRelacionesActividad(Integer idActividad) {
+        validarActividadExiste(idActividad);
+        return actividadMaterialV2Repo
+                .findByActividad_IdActividadOrderByMaterial_NombreMaterialAsc(idActividad)
+                .stream()
+                .map(this::toResponseRelacion)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ActividadMaterialV2Response crearRelacionMaterial(Integer idMaterial, ActividadMaterialV2Request dto) {
+        if (dto == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar los datos de la relacion");
+        }
+
+        Material material = materialRepo.findById(idMaterial)
+                .orElseThrow(() -> noEncontrado("Material no encontrado"));
+        Actividad actividad = actividadRepo.findById(dto.getIdActividad())
+                .orElseThrow(() -> noEncontrado("Actividad no encontrada"));
+
+        ActividadMaterialV2 relacion = new ActividadMaterialV2();
+        relacion.setMaterial(material);
+        relacion.setActividad(actividad);
+        aplicarDatosRelacion(relacion, dto);
+
+        return toResponseRelacion(actividadMaterialV2Repo.save(relacion));
+    }
+
+    @Transactional
+    public ActividadMaterialV2Response actualizarRelacionMaterial(
+            Integer idMaterial,
+            Integer idRelacion,
+            ActividadMaterialV2Request dto
+    ) {
+        if (dto == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar los datos de la relacion");
+        }
+
+        ActividadMaterialV2 relacion = actividadMaterialV2Repo.findById(idRelacion)
+                .orElseThrow(() -> noEncontrado("Relacion no encontrada"));
+
+        if (relacion.getMaterial() == null
+                || !idMaterial.equals(relacion.getMaterial().getIdMaterial())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La relacion no pertenece al material indicado");
+        }
+
+        if (dto.getIdActividad() != null
+                && (relacion.getActividad() == null
+                || !dto.getIdActividad().equals(relacion.getActividad().getIdActividad()))) {
+            Actividad actividad = actividadRepo.findById(dto.getIdActividad())
+                    .orElseThrow(() -> noEncontrado("Actividad no encontrada"));
+            relacion.setActividad(actividad);
+        }
+
+        aplicarDatosRelacion(relacion, dto);
+        return toResponseRelacion(actividadMaterialV2Repo.save(relacion));
     }
 
     private void aplicarPrecioMaterial(Material material, ActualizarPrecioCatalogoRequest dto) {
@@ -227,6 +391,64 @@ public class CatalogoItemService {
 
         if (dto.getActivo() != null) {
             producto.setActivo(dto.getActivo());
+        }
+    }
+
+    private void aplicarDatosRelacion(ActividadMaterialV2 relacion, ActividadMaterialV2Request dto) {
+        if (dto.getCantidad() != null) {
+            relacion.setCantidad(dto.getCantidad());
+        } else if (relacion.getCantidad() == null) {
+            relacion.setCantidad(BigDecimal.ONE);
+        }
+
+        if (dto.getFactor() != null) {
+            relacion.setFactor(dto.getFactor());
+        }
+
+        if (dto.getModoCantidad() != null) {
+            relacion.setModoCantidad(dto.getModoCantidad());
+        } else if (relacion.getModoCantidad() == null) {
+            relacion.setModoCantidad("POR_ACTIVIDAD");
+        }
+
+        if (dto.getActivo() != null) {
+            relacion.setActivo(dto.getActivo());
+        } else if (relacion.getActivo() == null) {
+            relacion.setActivo(true);
+        }
+
+        if (dto.getUnidadMaterial() != null && relacion.getMaterial() != null) {
+            relacion.getMaterial().setUnidad(dto.getUnidadMaterial());
+            materialRepo.save(relacion.getMaterial());
+        }
+
+        // Compatibilidad con esquemas existentes: la cotizacion usa siempre la semana de la actividad.
+        if (relacion.getActividad() != null) {
+            relacion.setSemana(relacion.getActividad().getSemana());
+        }
+    }
+
+    private void crearRelacionesInicialesMaterial(
+            Material material,
+            List<ActividadMaterialV2Request> relaciones
+    ) {
+        if (material == null || relaciones == null || relaciones.isEmpty()) {
+            return;
+        }
+
+        for (ActividadMaterialV2Request dtoRelacion : relaciones) {
+            if (dtoRelacion == null || dtoRelacion.getIdActividad() == null) {
+                continue;
+            }
+
+            Actividad actividad = actividadRepo.findById(dtoRelacion.getIdActividad())
+                    .orElseThrow(() -> noEncontrado("Actividad no encontrada"));
+
+            ActividadMaterialV2 relacion = new ActividadMaterialV2();
+            relacion.setMaterial(material);
+            relacion.setActividad(actividad);
+            aplicarDatosRelacion(relacion, dtoRelacion);
+            actividadMaterialV2Repo.save(relacion);
         }
     }
 
@@ -278,6 +500,51 @@ public class CatalogoItemService {
         return r;
     }
 
+    private ActividadMaterialV2Response toResponseRelacion(ActividadMaterialV2 relacion) {
+        ActividadMaterialV2Response r = new ActividadMaterialV2Response();
+        r.setIdActividadMaterialV2(relacion.getIdActividadMaterialV2());
+        r.setCantidad(relacion.getCantidad());
+        r.setFactor(relacion.getFactor());
+        r.setModoCantidad(relacion.getModoCantidad());
+        r.setActivo(relacion.getActivo());
+
+        if (relacion.getActividad() != null) {
+            Actividad actividad = relacion.getActividad();
+            r.setIdActividad(actividad.getIdActividad());
+            r.setNombreActividad(actividad.getNombreActividad());
+
+            if (actividad.getServicio() != null) {
+                r.setIdServicio(actividad.getServicio().getIdServicio());
+                r.setNombreServicio(actividad.getServicio().getNombreServicio());
+            }
+        }
+
+        if (relacion.getMaterial() != null) {
+            Material material = relacion.getMaterial();
+            r.setIdMaterial(material.getIdMaterial());
+            r.setNombreMaterial(material.getNombreMaterial());
+            r.setUnidadMaterial(material.getUnidad());
+        }
+
+        return r;
+    }
+
+    private CatalogoItemResponse toResponseActividadAdicional(ActividadPersonalizada actividad) {
+        CatalogoItemResponse r = new CatalogoItemResponse();
+        r.setIdCatalogoItem(OFFSET_ACTIVIDAD_ADICIONAL + actividad.getIdActividad());
+        r.setIdItemOrigen(actividad.getIdActividad());
+        r.setTipoItem(TIPO_ACTIVIDAD_ADICIONAL);
+        r.setTablaOrigen("actividad_personalizada");
+        r.setNombreItem(actividad.getNombreActividad());
+        r.setCategoria(actividad.getTipoCobro());
+        r.setPrecioUnitarioVenta(actividad.getPrecioUnitario());
+        r.setPrecioUnitarioProveedor(null);
+        r.setActivo(actividad.getEstado());
+        r.setRelacionesV2(0);
+        cargarServicio(r, actividad.getServicios());
+        return r;
+    }
+
     private void cargarServicio(CatalogoItemResponse response, Servicios servicio) {
         if (servicio == null) {
             return;
@@ -287,21 +554,25 @@ public class CatalogoItemService {
         response.setNombreServicio(servicio.getNombreServicio());
     }
 
-    private TipoItemCotizacion obtenerTipoDesdeId(Integer id) {
+    private String obtenerTipoDesdeId(Integer id) {
         if (id == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe enviar el id del item");
         }
 
+        if (id >= OFFSET_ACTIVIDAD_ADICIONAL) {
+            return TIPO_ACTIVIDAD_ADICIONAL;
+        }
+
         if (id >= OFFSET_PRODUCTO) {
-            return TipoItemCotizacion.PRODUCTO;
+            return TipoItemCotizacion.PRODUCTO.name();
         }
 
         if (id >= OFFSET_MATERIAL) {
-            return TipoItemCotizacion.MATERIAL;
+            return TipoItemCotizacion.MATERIAL.name();
         }
 
         if (id >= OFFSET_ACTIVIDAD) {
-            return TipoItemCotizacion.ACTIVIDAD;
+            return TipoItemCotizacion.ACTIVIDAD.name();
         }
 
         throw new ResponseStatusException(
@@ -310,21 +581,29 @@ public class CatalogoItemService {
         );
     }
 
-    private Integer obtenerIdReal(Integer id, TipoItemCotizacion tipo) {
-        if (tipo == TipoItemCotizacion.ACTIVIDAD) {
+    private Integer obtenerIdReal(Integer id, String tipo) {
+        if (TIPO_ACTIVIDAD_ADICIONAL.equals(tipo)) {
+            return id - OFFSET_ACTIVIDAD_ADICIONAL;
+        }
+
+        if (TipoItemCotizacion.ACTIVIDAD.name().equals(tipo)) {
             return id - OFFSET_ACTIVIDAD;
         }
 
-        if (tipo == TipoItemCotizacion.MATERIAL) {
+        if (TipoItemCotizacion.MATERIAL.name().equals(tipo)) {
             return id - OFFSET_MATERIAL;
         }
 
         return id - OFFSET_PRODUCTO;
     }
 
-    private TipoItemCotizacion validarTipo(String tipoItem) {
+    private String normalizarTipo(String tipoItem) {
+        if (tipoItem != null && TIPO_ACTIVIDAD_ADICIONAL.equals(tipoItem.trim().toUpperCase())) {
+            return TIPO_ACTIVIDAD_ADICIONAL;
+        }
+
         try {
-            return TipoItemCotizacion.valueOf(tipoItem);
+            return TipoItemCotizacion.valueOf(tipoItem).name();
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de item invalido");
         }
@@ -356,6 +635,23 @@ public class CatalogoItemService {
 
     private BigDecimal valorSeguro(BigDecimal valor) {
         return valor != null ? valor : BigDecimal.ZERO;
+    }
+
+    private Servicios buscarServicio(Integer idServicio) {
+        return serviciosRepo.findById(idServicio)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
+    }
+
+    private void validarMaterialExiste(Integer idMaterial) {
+        if (idMaterial == null || !materialRepo.existsById(idMaterial)) {
+            throw noEncontrado("Material no encontrado");
+        }
+    }
+
+    private void validarActividadExiste(Integer idActividad) {
+        if (idActividad == null || !actividadRepo.existsById(idActividad)) {
+            throw noEncontrado("Actividad no encontrada");
+        }
     }
 
     private ResponseStatusException noEncontrado(String mensaje) {

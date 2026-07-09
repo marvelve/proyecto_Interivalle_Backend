@@ -5,6 +5,7 @@
 package com.interivalle.DTO;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  *
@@ -20,6 +21,7 @@ public class CrearCatalogoItemRequest {
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
     private Boolean activo;
+    private List<ActividadMaterialV2Request> relacionesActividad;
 
     public String getNombreItem() {
         return nombreItem;
@@ -75,6 +77,14 @@ public class CrearCatalogoItemRequest {
 
     public void setActivo(Boolean activo) {
         this.activo = activo;
+    }
+
+    public List<ActividadMaterialV2Request> getRelacionesActividad() {
+        return relacionesActividad;
+    }
+
+    public void setRelacionesActividad(List<ActividadMaterialV2Request> relacionesActividad) {
+        this.relacionesActividad = relacionesActividad;
     }
     
     

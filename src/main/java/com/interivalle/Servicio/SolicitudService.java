@@ -9,8 +9,10 @@ import com.interivalle.Modelo.Solicitud;
 import com.interivalle.Modelo.SolicitudServicios;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Modelo.VisitaTecnica;
+import com.interivalle.Modelo.enums.EstadoCotizacion;
 import com.interivalle.Modelo.enums.ModuloNotificacion;
 import com.interivalle.Modelo.enums.TipoNotificacion;
+import com.interivalle.Repositorio.CotizacionRepositorio;
 import com.interivalle.Repositorio.ServiciosRepositorio;
 import com.interivalle.Repositorio.SolicitudRepositorio;
 import com.interivalle.Repositorio.SolicitudServiciosRepositorio;
@@ -56,6 +58,9 @@ public class SolicitudService {
 
     @Autowired
     private SolicitudServiciosRepositorio solicitudServicioRepo;
+
+    @Autowired
+    private CotizacionRepositorio cotizacionRepo;
 
     @Autowired
     private VisitaTecnicaRepositorio visitaTecnicaRepo;
@@ -112,12 +117,22 @@ public class SolicitudService {
     }
 
     @Transactional
-    public SolicitudResponse actualizarServiciosCotizacionBase(Integer idSolicitud, CrearSolicitud dto) {
+    public SolicitudResponse actualizarServiciosCotizacionBase(
+            Integer idSolicitud,
+            CrearSolicitud dto,
+            String correoUsuarioAccion
+    ) {
         validarDatosGenerales(dto);
         validarDatosCotizacionBase(dto);
 
         Solicitud solicitud = solicitudRepo.findById(idSolicitud)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Solicitud no encontrada"));
+
+        Usuario usuarioAccion = usuarioRepo.findByCorreoUsuario(correoUsuarioAccion)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Integer rolAccion = usuarioAccion.getIdRol();
+        boolean esAdminOSupervisor = rolAccion != null && (rolAccion == ROL_ADMIN || rolAccion == ROL_SUPERVISOR);
 
         if (!TIPO_COTIZACION_BASE.equalsIgnoreCase(solicitud.getTipoSolicitud())) {
             throw new ResponseStatusException(
@@ -134,15 +149,19 @@ public class SolicitudService {
             );
         }
 
-        String correoSolicitud = solicitud.getUsuario() != null
-                ? solicitud.getUsuario().getCorreoUsuario()
-                : null;
+        validarCotizacionNoAprobada(idSolicitud);
 
-        if (correoSolicitud == null || !correoSolicitud.equalsIgnoreCase(dto.getCorreoUsuario())) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "No puede modificar una solicitud que no le pertenece"
-            );
+        if (!esAdminOSupervisor) {
+            String correoSolicitud = solicitud.getUsuario() != null
+                    ? solicitud.getUsuario().getCorreoUsuario()
+                    : null;
+
+            if (correoSolicitud == null || !correoSolicitud.equalsIgnoreCase(usuarioAccion.getCorreoUsuario())) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "No puede modificar una solicitud que no le pertenece"
+                );
+            }
         }
 
         solicitud.setNombreProyectoUsuario(dto.getNombreProyecto().trim());
@@ -155,6 +174,22 @@ public class SolicitudService {
         guardarServiciosCotizacion(dto, solicitud);
 
         return buildResponseFromSolicitud(solicitud.getIdSolicitud());
+    }
+
+    private void validarCotizacionNoAprobada(Integer idSolicitud) {
+        boolean tieneCotizacionAprobada = cotizacionRepo.findBySolicitud_IdSolicitud(idSolicitud)
+                .stream()
+                .map(cotizacion -> cotizacion.getEstado())
+                .anyMatch(estado -> estado == EstadoCotizacion.APROBADA
+                        || estado == EstadoCotizacion.APROBADA_CLIENTE
+                        || estado == EstadoCotizacion.APROBADA_FINAL);
+
+        if (tieneCotizacionAprobada) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No se pueden actualizar servicios de una cotizacion aprobada"
+            );
+        }
     }
 
     @Transactional
