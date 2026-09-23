@@ -17,6 +17,7 @@ public class ActualizarPrecioCatalogoRequest {
     private String nombreItem;
     private String categoria;
     private Integer idServicio;
+    private Integer semana;
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
     private Boolean activo;
@@ -43,6 +44,14 @@ public class ActualizarPrecioCatalogoRequest {
 
     public void setIdServicio(Integer idServicio) {
         this.idServicio = idServicio;
+    }
+
+    public Integer getSemana() {
+        return semana;
+    }
+
+    public void setSemana(Integer semana) {
+        this.semana = semana;
     }
 
     public BigDecimal getPrecioUnitarioVenta() {

@@ -22,6 +22,20 @@ public class VidrioService {
     @Autowired
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
+    @Autowired
+    private CotizacionAdicionalPermisoService permisoService;
+
+    public Vidrio guardar(VidrioRequest req, String correoUsuario) {
+        CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+        permisoService.validarPuedeModificar(cotizacion, correoUsuario);
+
+        Vidrio item = new Vidrio();
+        item.setCotizacionPersonalizada(cotizacion);
+        cargarDatosItem(item, req);
+
+        return vidrioRepo.save(item);
+    }
+
     public Vidrio guardar(VidrioRequest req) {
         CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
         validarCotizacionEditable(cotizacion);
@@ -63,6 +77,24 @@ public class VidrioService {
         return vidrioRepo.save(item);
     }
 
+    public Vidrio actualizar(Integer id, VidrioRequest req, String correoUsuario) {
+        Vidrio item = vidrioRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de vidrio no encontrado"
+                ));
+
+        if (req.getIdCotizacion() != null) {
+            CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+            item.setCotizacionPersonalizada(cotizacion);
+        }
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
+        cargarDatosItem(item, req);
+
+        return vidrioRepo.save(item);
+    }
+
     public void eliminar(Integer id) {
         Vidrio item = vidrioRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -71,6 +103,17 @@ public class VidrioService {
                 ));
 
         validarCotizacionEditable(item.getCotizacionPersonalizada());
+        vidrioRepo.delete(item);
+    }
+
+    public void eliminar(Integer id, String correoUsuario) {
+        Vidrio item = vidrioRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de vidrio no encontrado"
+                ));
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
         vidrioRepo.delete(item);
     }
 

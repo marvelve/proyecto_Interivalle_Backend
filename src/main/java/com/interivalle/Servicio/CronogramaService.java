@@ -26,7 +26,6 @@ import com.interivalle.Modelo.Solicitud;
 import com.interivalle.Modelo.Usuario;
 import com.interivalle.Modelo.Vidrio;
 import com.interivalle.Modelo.enums.EstadoActividadCronograma;
-import com.interivalle.Modelo.enums.EstadoCotizacion;
 import com.interivalle.Modelo.enums.EstadoCronograma;
 import com.interivalle.Modelo.enums.TipoItemCotizacion;
 import com.interivalle.Repositorio.CarpinteriaPersonalizadaRepositorio;
@@ -791,14 +790,6 @@ public class CronogramaService {
         cronograma.setEstadoCronograma(EstadoCronograma.EN_PROCESO);
         cronograma.setEstado(EstadoCronograma.EN_PROCESO.name());
         Cronograma guardado = cronogramaRepo.save(cronograma);
-
-        Cotizacion cotizacion = guardado.getCotizacion();
-        if (cotizacion != null) {
-            cotizacion.setEstado(EstadoCotizacion.APROBADA_FINAL);
-            cotizacion.setAprobadaInterivalle(true);
-            cotizacion.setFechaAprobacionInterivalle(java.time.LocalDateTime.now());
-            cotizacionRepo.save(cotizacion);
-        }
 
         CronogramaResponse response = new CronogramaResponse();
         response.setIdCronograma(guardado.getIdCronograma());

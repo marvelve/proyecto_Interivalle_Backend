@@ -17,6 +17,7 @@ public class CrearCatalogoItemRequest {
     private String categoria;
     private String tipoItem; // ACTIVIDAD, MATERIAL, PRODUCTO
     private Integer idServicio;
+    private Integer semana;
 
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
@@ -53,6 +54,14 @@ public class CrearCatalogoItemRequest {
 
     public void setIdServicio(Integer idServicio) {
         this.idServicio = idServicio;
+    }
+
+    public Integer getSemana() {
+        return semana;
+    }
+
+    public void setSemana(Integer semana) {
+        this.semana = semana;
     }
 
     public BigDecimal getPrecioUnitarioVenta() {

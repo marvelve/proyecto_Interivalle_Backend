@@ -396,6 +396,27 @@ public class CotizacionService {
         );
     }
 
+    private void notificarCotizacionFinalACliente(Cotizacion cotizacion) {
+        if (cotizacion == null || cotizacion.getSolicitud() == null || cotizacion.getSolicitud().getUsuario() == null) {
+            return;
+        }
+
+        Usuario cliente = cotizacion.getSolicitud().getUsuario();
+        String nombreProyecto = textoNotificacion(cotizacion.getSolicitud().getNombreProyectoUsuario());
+        String titulo = "Cotizacion aprobada finalmente";
+        String mensaje = "InterValle aprobo finalmente la cotizacion #" + cotizacion.getIdCotizacion()
+                + " del proyecto '" + nombreProyecto + "'.";
+
+        notificacionService.crearNotificacion(
+                cliente,
+                TipoNotificacion.COTIZACION_APROBADA,
+                ModuloNotificacion.COTIZACION,
+                titulo,
+                mensaje,
+                cotizacion.getIdCotizacion()
+        );
+    }
+
     private String textoNotificacion(String valor) {
         return valor == null || valor.isBlank() ? "-" : valor.trim();
     }
@@ -484,13 +505,29 @@ public class CotizacionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cotizacion ya fue aprobada por InterValle");
         }
 
-        // Compatibilidad: esta aprobacion interna antigua ahora equivale al cierre final de cotizacion.
+        Cronograma cronograma = cronogramaRepo.findByCotizacion_IdCotizacion(idCotizacion)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Debe existir un cronograma para aprobar finalmente la cotizacion"
+            ));
+
+        if (cronograma.getEstadoCronograma() != EstadoCronograma.EN_PROCESO
+                && cronograma.getEstadoCronograma() != EstadoCronograma.FINALIZADO) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Primero debe aprobar el cronograma para activar la aprobacion final de la cotizacion"
+            );
+        }
+
+        EstadoCotizacion anterior = cot.getEstado();
         cot.setAprobadaInterivalle(true);
         cot.setFechaAprobacionInterivalle(LocalDateTime.now());
         cot.setEstado(EstadoCotizacion.APROBADA_FINAL);
         cot = cotizacionRepo.save(cot);
 
         guardarObservacion(cot, usuario, TipoObservacion.APROBACION, "Aprobada internamente por InterValle");
+        guardarHistorial(cot, anterior, EstadoCotizacion.APROBADA_FINAL, usuario);
+        notificarCotizacionFinalACliente(cot);
         return toResponseCompleto(cot);
     }
 

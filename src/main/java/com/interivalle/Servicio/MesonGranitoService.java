@@ -22,6 +22,20 @@ public class MesonGranitoService {
     @Autowired
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
+    @Autowired
+    private CotizacionAdicionalPermisoService permisoService;
+
+    public MesonGranito guardar(MesonGranitoRequest req, String correoUsuario) {
+        CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+        permisoService.validarPuedeModificar(cotizacion, correoUsuario);
+
+        MesonGranito item = new MesonGranito();
+        item.setCotizacionPersonalizada(cotizacion);
+        cargarDatosItem(item, req);
+
+        return mesonRepo.save(item);
+    }
+
     public MesonGranito guardar(MesonGranitoRequest req) {
         CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
         validarCotizacionEditable(cotizacion);
@@ -63,6 +77,24 @@ public class MesonGranitoService {
         return mesonRepo.save(item);
     }
 
+    public MesonGranito actualizar(Integer id, MesonGranitoRequest req, String correoUsuario) {
+        MesonGranito item = mesonRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de meson no encontrado"
+                ));
+
+        if (req.getIdCotizacion() != null) {
+            CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+            item.setCotizacionPersonalizada(cotizacion);
+        }
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
+        cargarDatosItem(item, req);
+
+        return mesonRepo.save(item);
+    }
+
     public void eliminar(Integer id) {
         MesonGranito item = mesonRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -71,6 +103,17 @@ public class MesonGranitoService {
                 ));
 
         validarCotizacionEditable(item.getCotizacionPersonalizada());
+        mesonRepo.delete(item);
+    }
+
+    public void eliminar(Integer id, String correoUsuario) {
+        MesonGranito item = mesonRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de meson no encontrado"
+                ));
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
         mesonRepo.delete(item);
     }
 

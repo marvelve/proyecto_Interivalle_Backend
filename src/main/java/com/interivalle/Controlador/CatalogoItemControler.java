@@ -37,7 +37,7 @@ public class CatalogoItemControler {
     }
 
     @PutMapping("/{id}/precio")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
     public CatalogoItemResponse actualizarPrecio(
             @PathVariable Integer id,
             @RequestBody ActualizarPrecioCatalogoRequest dto

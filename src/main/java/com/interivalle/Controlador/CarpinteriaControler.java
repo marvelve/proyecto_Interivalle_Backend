@@ -6,6 +6,7 @@ import com.interivalle.Servicio.CarpinteriaService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,11 +25,11 @@ public class CarpinteriaControler {
     @Autowired
     private CarpinteriaService carpinteriaService;
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @PostMapping
-    public Carpinteria guardar(@RequestBody CarpinteriaRequest req) {
+    public Carpinteria guardar(@RequestBody CarpinteriaRequest req, Authentication authentication) {
         // Guarda un adicional de carpinteria dentro de una cotizacion personalizada.
-        return carpinteriaService.guardar(req);
+        return carpinteriaService.guardar(req, authentication.getName());
     }
 
     @GetMapping("/cotizacion/{idCotizacion}")
@@ -41,15 +42,15 @@ public class CarpinteriaControler {
         return carpinteriaService.obtenerPorId(id);
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @PutMapping("/{id}")
-    public Carpinteria actualizar(@PathVariable Integer id, @RequestBody CarpinteriaRequest req) {
-        return carpinteriaService.actualizar(id, req);
+    public Carpinteria actualizar(@PathVariable Integer id, @RequestBody CarpinteriaRequest req, Authentication authentication) {
+        return carpinteriaService.actualizar(id, req, authentication.getName());
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Integer id) {
-        carpinteriaService.eliminar(id);
+    public void eliminar(@PathVariable Integer id, Authentication authentication) {
+        carpinteriaService.eliminar(id, authentication.getName());
     }
 }

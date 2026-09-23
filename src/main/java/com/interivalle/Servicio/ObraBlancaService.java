@@ -24,16 +24,31 @@ public class ObraBlancaService {
     @Autowired
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
+    @Autowired
+    private CotizacionAdicionalPermisoService permisoService;
+
+    public ObraBlancaResponse guardar(ObraBlancaRequest req, String correoUsuario) {
+        validarDatosBasicos(req);
+
+        CotizacionPersonalizada cotizacion = buscarCotizacionPorBase(req.getIdCotizacion());
+        permisoService.validarPuedeModificar(cotizacion, correoUsuario);
+
+        String lugarNormalizado = normalizarLugar(req.getLugar());
+        validarActividadRepetida(req.getIdCotizacion(), req.getIdActividad(), lugarNormalizado);
+
+        ObraBlanca item = new ObraBlanca();
+        item.setCotizacionPersonalizada(cotizacion);
+        cargarDatosItem(item, req, lugarNormalizado);
+
+        ObraBlanca guardado = obraBlancaRepo.save(item);
+        return toResponse(guardado);
+    }
+
     public ObraBlancaResponse guardar(ObraBlancaRequest req) {
         validarDatosBasicos(req);
 
         // La obra blanca se guarda buscando la cabecera por el id de la cotizacion base.
-        CotizacionPersonalizada cotizacion = cotizacionRepo
-                .findByCotizacion_IdCotizacion(req.getIdCotizacion())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Cotizacion personalizada no encontrada para la cotizacion base: " + req.getIdCotizacion()
-                ));
+        CotizacionPersonalizada cotizacion = buscarCotizacionPorBase(req.getIdCotizacion());
 
         validarCotizacionEditable(cotizacion);
 
@@ -87,6 +102,26 @@ public class ObraBlancaService {
         return toResponse(actualizado);
     }
 
+    public ObraBlancaResponse actualizar(Integer id, ObraBlancaRequest req, String correoUsuario) {
+        ObraBlanca item = obraBlancaRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de obra blanca no encontrado"
+                ));
+
+        Integer idCotizacionBase = asignarCotizacionSiLlegaEnRequest(item, req);
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
+        validarDatosBasicosParaActualizar(req);
+
+        String lugarNormalizado = normalizarLugar(req.getLugar());
+        validarActividadRepetidaAlActualizar(id, idCotizacionBase, req.getIdActividad(), lugarNormalizado);
+
+        cargarDatosItem(item, req, lugarNormalizado);
+
+        ObraBlanca actualizado = obraBlancaRepo.save(item);
+        return toResponse(actualizado);
+    }
+
     public void eliminar(Integer id) {
         ObraBlanca item = obraBlancaRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -96,6 +131,26 @@ public class ObraBlancaService {
 
         validarCotizacionEditable(item.getCotizacionPersonalizada());
         obraBlancaRepo.delete(item);
+    }
+
+    public void eliminar(Integer id, String correoUsuario) {
+        ObraBlanca item = obraBlancaRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de obra blanca no encontrado"
+                ));
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
+        obraBlancaRepo.delete(item);
+    }
+
+    private CotizacionPersonalizada buscarCotizacionPorBase(Integer idCotizacionBase) {
+        return cotizacionRepo
+                .findByCotizacion_IdCotizacion(idCotizacionBase)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Cotizacion personalizada no encontrada para la cotizacion base: " + idCotizacionBase
+                ));
     }
 
     private Integer asignarCotizacionSiLlegaEnRequest(ObraBlanca item, ObraBlancaRequest req) {

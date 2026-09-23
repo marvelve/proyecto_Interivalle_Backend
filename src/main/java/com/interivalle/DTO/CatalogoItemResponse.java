@@ -11,6 +11,7 @@ public class CatalogoItemResponse {
     private String categoria;
     private String tipoItem;
     private Integer idServicio;
+    private Integer semana;
     private String nombreServicio;
     private BigDecimal precioUnitarioVenta;
     private BigDecimal precioUnitarioProveedor;
@@ -64,6 +65,14 @@ public class CatalogoItemResponse {
 
     public void setIdServicio(Integer idServicio) {
         this.idServicio = idServicio;
+    }
+
+    public Integer getSemana() {
+        return semana;
+    }
+
+    public void setSemana(Integer semana) {
+        this.semana = semana;
     }
 
     public String getNombreServicio() {

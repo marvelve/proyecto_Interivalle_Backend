@@ -6,6 +6,7 @@ import com.interivalle.Servicio.MesonGranitoService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,11 +25,11 @@ public class MesonGranitoControler {
     @Autowired
     private MesonGranitoService mesonGranitoService;
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @PostMapping
-    public MesonGranito guardar(@RequestBody MesonGranitoRequest req) {
+    public MesonGranito guardar(@RequestBody MesonGranitoRequest req, Authentication authentication) {
         // Guarda un adicional de meson/marmol/granito.
-        return mesonGranitoService.guardar(req);
+        return mesonGranitoService.guardar(req, authentication.getName());
     }
 
     @GetMapping("/cotizacion/{idCotizacion}")
@@ -41,15 +42,15 @@ public class MesonGranitoControler {
         return mesonGranitoService.obtenerPorId(id);
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @PutMapping("/{id}")
-    public MesonGranito actualizar(@PathVariable Integer id, @RequestBody MesonGranitoRequest req) {
-        return mesonGranitoService.actualizar(id, req);
+    public MesonGranito actualizar(@PathVariable Integer id, @RequestBody MesonGranitoRequest req, Authentication authentication) {
+        return mesonGranitoService.actualizar(id, req, authentication.getName());
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','CLIENTE')")
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Integer id) {
-        mesonGranitoService.eliminar(id);
+    public void eliminar(@PathVariable Integer id, Authentication authentication) {
+        mesonGranitoService.eliminar(id, authentication.getName());
     }
 }

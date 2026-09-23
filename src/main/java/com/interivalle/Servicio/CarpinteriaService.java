@@ -22,6 +22,20 @@ public class CarpinteriaService {
     @Autowired
     private CotizacionPersonalizadaRepositorio cotizacionRepo;
 
+    @Autowired
+    private CotizacionAdicionalPermisoService permisoService;
+
+    public Carpinteria guardar(CarpinteriaRequest req, String correoUsuario) {
+        CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+        permisoService.validarPuedeModificar(cotizacion, correoUsuario);
+
+        Carpinteria item = new Carpinteria();
+        item.setCotizacionPersonalizada(cotizacion);
+        cargarDatosItem(item, req);
+
+        return carpinteriaRepo.save(item);
+    }
+
     public Carpinteria guardar(CarpinteriaRequest req) {
         CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
         validarCotizacionEditable(cotizacion);
@@ -63,6 +77,24 @@ public class CarpinteriaService {
         return carpinteriaRepo.save(item);
     }
 
+    public Carpinteria actualizar(Integer id, CarpinteriaRequest req, String correoUsuario) {
+        Carpinteria item = carpinteriaRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de carpinteria no encontrado"
+                ));
+
+        if (req.getIdCotizacion() != null) {
+            CotizacionPersonalizada cotizacion = buscarCotizacionPersonalizada(req.getIdCotizacion());
+            item.setCotizacionPersonalizada(cotizacion);
+        }
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
+        cargarDatosItem(item, req);
+
+        return carpinteriaRepo.save(item);
+    }
+
     public void eliminar(Integer id) {
         Carpinteria item = carpinteriaRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -71,6 +103,17 @@ public class CarpinteriaService {
                 ));
 
         validarCotizacionEditable(item.getCotizacionPersonalizada());
+        carpinteriaRepo.delete(item);
+    }
+
+    public void eliminar(Integer id, String correoUsuario) {
+        Carpinteria item = carpinteriaRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Item de carpinteria no encontrado"
+                ));
+
+        permisoService.validarPuedeModificar(item.getCotizacionPersonalizada(), correoUsuario);
         carpinteriaRepo.delete(item);
     }
 

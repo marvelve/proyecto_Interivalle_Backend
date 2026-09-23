@@ -150,6 +150,10 @@ public class CatalogoItemService {
                 actividad.setServicio(buscarServicio(dto.getIdServicio()));
             }
 
+            if (dto.getSemana() != null) {
+                actividad.setSemana(validarSemana(dto.getSemana()));
+            }
+
             if (dto.getPrecioUnitarioVenta() != null) {
                 actividad.setPrecioUnitarioVenta(dto.getPrecioUnitarioVenta());
             }
@@ -159,6 +163,7 @@ public class CatalogoItemService {
             }
 
             Actividad actualizada = actividadRepo.save(actividad);
+            sincronizarSemanaRelacionesActividad(actualizada);
             int relaciones = actividadMaterialV2Repo
                     .findByActividad_IdActividadAndActivoTrue(actualizada.getIdActividad())
                     .size();
@@ -245,6 +250,7 @@ public class CatalogoItemService {
             actividad.setNombreActividad(dto.getNombreItem());
             actividad.setCategoria(dto.getCategoria());
             actividad.setModoPrecio("FIJO");
+            actividad.setSemana(validarSemana(dto.getSemana()));
             actividad.setPrecioUnitarioVenta(valorSeguro(dto.getPrecioUnitarioVenta()));
             actividad.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
             actividad.setFechaCreacion(LocalDateTime.now());
@@ -460,6 +466,7 @@ public class CatalogoItemService {
         r.setTablaOrigen("actividad");
         r.setNombreItem(actividad.getNombreActividad());
         r.setCategoria(actividad.getCategoria());
+        r.setSemana(actividad.getSemana());
         r.setPrecioUnitarioVenta(actividad.getPrecioUnitarioVenta());
         r.setPrecioUnitarioProveedor(null);
         r.setActivo(actividad.getActivo());
@@ -476,6 +483,7 @@ public class CatalogoItemService {
         r.setTablaOrigen("material");
         r.setNombreItem(material.getNombreMaterial());
         r.setCategoria(material.getCategoria());
+        r.setSemana(null);
         r.setPrecioUnitarioVenta(material.getPrecioUnitarioVenta());
         r.setPrecioUnitarioProveedor(material.getPrecioUnitarioProveedor());
         r.setActivo(material.getActivo());
@@ -492,6 +500,7 @@ public class CatalogoItemService {
         r.setTablaOrigen("producto");
         r.setNombreItem(producto.getNombreProducto());
         r.setCategoria(producto.getCategoria());
+        r.setSemana(producto.getSemana());
         r.setPrecioUnitarioVenta(producto.getPrecioUnitarioVenta());
         r.setPrecioUnitarioProveedor(producto.getPrecioUnitarioProveedor());
         r.setActivo(producto.getActivo());
@@ -537,6 +546,7 @@ public class CatalogoItemService {
         r.setTablaOrigen("actividad_personalizada");
         r.setNombreItem(actividad.getNombreActividad());
         r.setCategoria(actividad.getTipoCobro());
+        r.setSemana(null);
         r.setPrecioUnitarioVenta(actividad.getPrecioUnitario());
         r.setPrecioUnitarioProveedor(null);
         r.setActivo(actividad.getEstado());
@@ -635,6 +645,34 @@ public class CatalogoItemService {
 
     private BigDecimal valorSeguro(BigDecimal valor) {
         return valor != null ? valor : BigDecimal.ZERO;
+    }
+
+    private Integer validarSemana(Integer semana) {
+        if (semana == null) {
+            return null;
+        }
+
+        if (semana <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La semana debe ser mayor a 0");
+        }
+
+        return semana;
+    }
+
+    private void sincronizarSemanaRelacionesActividad(Actividad actividad) {
+        if (actividad == null || actividad.getIdActividad() == null) {
+            return;
+        }
+
+        List<ActividadMaterialV2> relaciones = actividadMaterialV2Repo
+                .findByActividad_IdActividadOrderByMaterial_NombreMaterialAsc(actividad.getIdActividad());
+
+        if (relaciones.isEmpty()) {
+            return;
+        }
+
+        relaciones.forEach(relacion -> relacion.setSemana(actividad.getSemana()));
+        actividadMaterialV2Repo.saveAll(relaciones);
     }
 
     private Servicios buscarServicio(Integer idServicio) {

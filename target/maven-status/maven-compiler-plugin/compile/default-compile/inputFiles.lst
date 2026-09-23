@@ -20,6 +20,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\NotificacionControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ObraBlancaControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ProductoController.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\ReporteMaterialesCotizacionControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\SolicitudControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\TestControler.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Controlador\VidrioControler.java
@@ -85,6 +86,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\Observa
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ProductoRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ProductoResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\RegisterRequest.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ReporteMaterialesCotizacionResponse.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\ReprogramarVisitaRequest.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\RolUpdate.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\DTO\SemanaCronogramaDTO.java
@@ -181,6 +183,7 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\Av
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CarpinteriaPersonalizadaServicio.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CarpinteriaService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CatalogoItemService.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionAdicionalPermisoService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionBaseV2Service.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionPersonalizadaService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\CotizacionService.java
@@ -191,5 +194,6 @@ C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\Me
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\NotificacionService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\ObraBlancaService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\ProductoService.java
+C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\ReporteMaterialesCotizacionService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\SolicitudService.java
 C:\Users\mary_\Documents\Backend_Login\src\main\java\com\interivalle\Servicio\VidrioService.java
