@@ -34,6 +34,7 @@ import com.interivalle.Modelo.CotizacionManoObra;
 import com.interivalle.Modelo.CotizacionMezon;
 import com.interivalle.Modelo.CotizacionObservacion;
 import com.interivalle.Modelo.CotizacionVidrio;
+import com.interivalle.Modelo.Material;
 import com.interivalle.Modelo.Producto;
 import com.interivalle.Modelo.Servicios;
 import com.interivalle.Modelo.Solicitud;
@@ -57,6 +58,7 @@ import com.interivalle.Repositorio.CotizacionObservacionRepositorio;
 import com.interivalle.Repositorio.CotizacionRepositorio;
 import com.interivalle.Repositorio.CotizacionVidrioRepositorio;
 import com.interivalle.Repositorio.CronogramaRepositorio;
+import com.interivalle.Repositorio.MaterialRepositorio;
 import com.interivalle.Repositorio.ProductoRepositorio;
 import com.interivalle.Repositorio.ServiciosRepositorio;
 import com.interivalle.Repositorio.SolicitudRepositorio;
@@ -110,6 +112,7 @@ public class CotizacionService {
     @Autowired private UsuarioRepositorio usuarioRepo;
     @Autowired private ActividadMaterialRepositorio actividadMaterialRepo;
     @Autowired private CatalogoItemRepositorio catalogoItemRepo;
+    @Autowired private MaterialRepositorio materialRepo;
     @Autowired private ProductoRepositorio productoRepo;
 
     @Autowired private CotizacionManoObraRepositorio cotizacionManoObraRepo;
@@ -2781,8 +2784,96 @@ private BigDecimal calcularValorActividad(CatalogoItem actividad, GenerarCotizac
         dr.setSubtotalVenta(d.getSubtotalVenta());
         dr.setPrecioUnitarioProveedor(d.getPrecioUnitarioProveedor());
         dr.setSubtotalProveedor(d.getSubtotalProveedor());
+        String codigoMaterial = obtenerCodigoMaterialDetalle(d);
+        boolean materialCompraCliente = esCodigoCliente(codigoMaterial);
+        dr.setCodigoMaterial(codigoMaterial);
+        dr.setMaterialCompraCliente(materialCompraCliente);
+        dr.setValorCompraClienteAprox(calcularValorCompraClienteAprox(d, materialCompraCliente));
 
         return dr;
+    }
+
+    private BigDecimal calcularValorCompraClienteAprox(CotizacionDetalle d, boolean materialCompraCliente) {
+        if (d == null || d.getTipoItem() != TipoItemCotizacion.MATERIAL || !materialCompraCliente) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal subtotalVenta = valorCero(d.getSubtotalVenta());
+        if (subtotalVenta.compareTo(BigDecimal.ZERO) > 0) {
+            return subtotalVenta;
+        }
+
+        return valorCero(d.getSubtotalProveedor());
+    }
+
+    private String obtenerCodigoMaterialDetalle(CotizacionDetalle d) {
+        if (d == null || d.getTipoItem() != TipoItemCotizacion.MATERIAL || d.getServicio() == null) {
+            return null;
+        }
+
+        String descripcionDetalle = llaveMaterial(d.getDescripcion());
+        if (descripcionDetalle.isEmpty()) {
+            return null;
+        }
+
+        Integer idServicio = d.getServicio().getIdServicio();
+        return materialRepo.findByServicio_IdServiciosAndActivoTrue(idServicio).stream()
+            .filter(material -> esCodigoCliente(material.getCodigo()))
+            .filter(material -> coincideMaterialDetalle(material, descripcionDetalle))
+            .map(Material::getCodigo)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private boolean coincideMaterialDetalle(Material material, String descripcionDetalle) {
+        if (material == null) {
+            return false;
+        }
+
+        String nombreDescripcion = llaveMaterial(textoPrincipal(material.getNombreMaterial(), material.getDescripcion()));
+        String nombre = llaveMaterial(material.getNombreMaterial());
+        String descripcion = llaveMaterial(material.getDescripcion());
+
+        return coincideTextoMaterial(descripcionDetalle, nombreDescripcion)
+            || coincideTextoMaterial(descripcionDetalle, nombre)
+            || coincideTextoMaterial(descripcionDetalle, descripcion);
+    }
+
+    private boolean coincideTextoMaterial(String descripcionDetalle, String textoMaterial) {
+        if (descripcionDetalle == null || textoMaterial == null || textoMaterial.isEmpty()) {
+            return false;
+        }
+
+        String detalleCompacto = llaveMaterialCompacta(descripcionDetalle);
+        String materialCompacto = llaveMaterialCompacta(textoMaterial);
+
+        return descripcionDetalle.equals(textoMaterial)
+            || descripcionDetalle.contains(textoMaterial)
+            || textoMaterial.contains(descripcionDetalle)
+            || detalleCompacto.equals(materialCompacto)
+            || detalleCompacto.contains(materialCompacto)
+            || materialCompacto.contains(detalleCompacto);
+    }
+
+    private boolean esCodigoCliente(String codigo) {
+        return "cliente".equals(normalizarComparacion(codigo));
+    }
+
+    private String llaveMaterial(String texto) {
+        return normalizarComparacion(texto)
+            .replaceAll("[^a-z0-9]+", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+    }
+
+    private String llaveMaterialCompacta(String texto) {
+        return llaveMaterial(texto)
+            .replaceAll("\\b(de|del|la|el|los|las)\\b", "")
+            .replaceAll("\\s+", "");
+    }
+
+    private BigDecimal valorCero(BigDecimal valor) {
+        return valor == null ? BigDecimal.ZERO : valor;
     }
 
 private List<CotizacionSemanaResponse> agruparPorSemanas(List<CotizacionDetalleResponse> detalles) {
@@ -2893,8 +2984,13 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
                 m.setIdDetalle(mat.getIdDetalle());
                 m.setCantidad(mat.getCantidad());
                 m.setMaterial(mat.getDescripcion());
+                m.setCodigoMaterial(mat.getCodigoMaterial());
+                m.setMaterialCompraCliente(Boolean.TRUE.equals(mat.getMaterialCompraCliente()));
                 m.setPrecioMaterial(
                     mat.getSubtotalVenta() != null ? mat.getSubtotalVenta() : BigDecimal.ZERO
+                );
+                m.setValorCompraClienteAprox(
+                    mat.getValorCompraClienteAprox() != null ? mat.getValorCompraClienteAprox() : BigDecimal.ZERO
                 );
                 mats.add(m);
             }
@@ -2928,6 +3024,12 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
         return items.stream()
             .filter(i -> i.getTipoItem() == tipo)
             .map(i -> i.getSubtotalVenta() == null ? BigDecimal.ZERO : i.getSubtotalVenta())
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumarValorComprasClienteAprox(List<CotizacionDetalleResponse> items) {
+        return items.stream()
+            .map(i -> i.getValorCompraClienteAprox() == null ? BigDecimal.ZERO : i.getValorCompraClienteAprox())
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -3007,6 +3109,7 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
 
     resp.setTotalAdicionales(totalAdicionales);
     resp.setTotalGeneral(totalGeneral);
+    resp.setValorComprasClienteAprox(sumarValorComprasClienteAprox(detalleBase));
 
     resp.setDetalleBase(detalleBase);
     resp.setSemanas(agruparPorSemanas(detalleBase));
@@ -3075,6 +3178,7 @@ private List<ActividadAgrupadaResponse> agruparActividadesConMateriales(List<Cot
 
         resp.setTotalAdicionales(totalAdicionales);
         resp.setTotalGeneral(totalGeneral);
+        resp.setValorComprasClienteAprox(sumarValorComprasClienteAprox(detalleBase));
 
         resp.setDetalleBase(detalleBase);
         resp.setSemanas(agruparPorSemanas(detalleBase));

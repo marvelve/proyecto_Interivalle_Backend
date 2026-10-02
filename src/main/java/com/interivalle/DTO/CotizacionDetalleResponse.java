@@ -21,6 +21,8 @@ public class CotizacionDetalleResponse {
     private Integer semana;
     private String descripcion;
     private String actividadMaterial;
+    private String codigoMaterial;
+    private Boolean materialCompraCliente;
 
     private BigDecimal cantidad;
     private String unidad;
@@ -29,6 +31,7 @@ public class CotizacionDetalleResponse {
 
     private BigDecimal precioUnitarioProveedor;
     private BigDecimal subtotalProveedor;
+    private BigDecimal valorCompraClienteAprox;
 
     public Integer getIdDetalle() {
         return idDetalle;
@@ -124,6 +127,30 @@ public class CotizacionDetalleResponse {
 
     public void setSubtotalProveedor(BigDecimal subtotalProveedor) {
         this.subtotalProveedor = subtotalProveedor;
+    }
+
+    public BigDecimal getValorCompraClienteAprox() {
+        return valorCompraClienteAprox;
+    }
+
+    public void setValorCompraClienteAprox(BigDecimal valorCompraClienteAprox) {
+        this.valorCompraClienteAprox = valorCompraClienteAprox;
+    }
+
+    public String getCodigoMaterial() {
+        return codigoMaterial;
+    }
+
+    public void setCodigoMaterial(String codigoMaterial) {
+        this.codigoMaterial = codigoMaterial;
+    }
+
+    public Boolean getMaterialCompraCliente() {
+        return materialCompraCliente;
+    }
+
+    public void setMaterialCompraCliente(Boolean materialCompraCliente) {
+        this.materialCompraCliente = materialCompraCliente;
     }
 
     public String getActividadMaterial() {

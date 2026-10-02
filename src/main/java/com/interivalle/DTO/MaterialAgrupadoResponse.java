@@ -15,7 +15,10 @@ public class MaterialAgrupadoResponse {
     private Integer idDetalle;
     private BigDecimal cantidad;
     private String material;
+    private String codigoMaterial;
+    private Boolean materialCompraCliente;
     private BigDecimal precioMaterial;
+    private BigDecimal valorCompraClienteAprox;
     private Integer semana;
 
     public Integer getIdDetalle() {
@@ -42,12 +45,36 @@ public class MaterialAgrupadoResponse {
         this.material = material;
     }
 
+    public String getCodigoMaterial() {
+        return codigoMaterial;
+    }
+
+    public void setCodigoMaterial(String codigoMaterial) {
+        this.codigoMaterial = codigoMaterial;
+    }
+
+    public Boolean getMaterialCompraCliente() {
+        return materialCompraCliente;
+    }
+
+    public void setMaterialCompraCliente(Boolean materialCompraCliente) {
+        this.materialCompraCliente = materialCompraCliente;
+    }
+
     public BigDecimal getPrecioMaterial() {
         return precioMaterial;
     }
 
     public void setPrecioMaterial(BigDecimal precioMaterial) {
         this.precioMaterial = precioMaterial;
+    }
+
+    public BigDecimal getValorCompraClienteAprox() {
+        return valorCompraClienteAprox;
+    }
+
+    public void setValorCompraClienteAprox(BigDecimal valorCompraClienteAprox) {
+        this.valorCompraClienteAprox = valorCompraClienteAprox;
     }
 
     public Integer getSemana() {

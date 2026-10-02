@@ -29,6 +29,7 @@ public class CotizacionVistaCompletaResponse {
 
     private BigDecimal totalAdicionales;
     private BigDecimal totalGeneral;
+    private BigDecimal valorComprasClienteAprox;
 
     private List<CotizacionDetalleResponse> detalleBase;
     private CotizacionPersonalizadaDetalleResponse personalizada;
@@ -152,6 +153,14 @@ public class CotizacionVistaCompletaResponse {
 
     public void setTotalGeneral(BigDecimal totalGeneral) {
         this.totalGeneral = totalGeneral;
+    }
+
+    public BigDecimal getValorComprasClienteAprox() {
+        return valorComprasClienteAprox;
+    }
+
+    public void setValorComprasClienteAprox(BigDecimal valorComprasClienteAprox) {
+        this.valorComprasClienteAprox = valorComprasClienteAprox;
     }
 
     public List<CotizacionDetalleResponse> getDetalleBase() {
